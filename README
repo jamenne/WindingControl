@@ -1,5 +1,0 @@
-GIT Repository for online winding control
-
-'cmake ..' and 'make' from build directory. Run from the directory in which the
-'videos' directory is located. (For calibration with additional argument '-c' 
-create directory named 'calib')
