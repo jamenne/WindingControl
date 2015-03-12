@@ -40,7 +40,7 @@ endif( ${APPLE} )
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 
   MESSAGE( STATUS "Building for Linux, switching on C++11 flags for Linux/gcc" )
-  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pedantic -Wextra" )
+  SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -pedantic -Wextra" )
 
 endif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 
