@@ -121,15 +121,14 @@ int main(int argc, char *argv[]) {
         videoName = "../video1/frame_%03d.jpg";  // hardcoded path to videoName
 
         cam.open(videoName);  // Load video file or a sequence of images
-
-        if (!cam.isOpened()) {
-            cout << "capture is not open. EXIT" << endl;
-            exit(EXIT_FAILURE);
-        }
     } else {
         cam.open(CV_CAP_ANY);
     }
 
+    if (!cam.isOpened()) {
+        cout << "capture is not open. EXIT" << endl;
+        exit(EXIT_FAILURE);
+    }
 
     // Get the first image from cam/video
     Mat whole;  // container for the 'whole' video frame
