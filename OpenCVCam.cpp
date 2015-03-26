@@ -1,6 +1,6 @@
-/*  Author: Philipp Zander
-    at TU Dortmund, Physik, Experimentelle Physik 5
-    year: 2014/15
+/*  Copyright 2014 TU Dortmund, Physik, Experimentelle Physik 5
+	
+	Author: Philipp Zander
 
     build with openCV v2.4.10
         and ROOT v5.34/21
@@ -20,13 +20,15 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <utility>
+#include <algorithm>
 #include <sstream>  // used for putting text on the frames
 #include <fstream>  // reading/writing configration files
-#include <math.h>
+#include <cmath>
 
-//using namespace std;
 using namespace cv;
-using std::cout; using std::cin; using std::endl; using std::stringstream; using std::vector; using std::ifstream; using std::ofstream;
+using std::cout; using std::cin; using std::endl; using std::stringstream;
+using std::vector; using std::ifstream; using std::ofstream;
 namespace po = boost::program_options;
 
 // global variables ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -34,8 +36,11 @@ int CAM_HEIGHT, CAM_WIDTH;
 int BW_THRESH, CANNY_THRESH, CENTER_THRESH, MIN_DIST, MIN_RADIUS, MAX_RADIUS, ACCUMULATOR_RES;
 int ROI_LOWER, ROI_UPPER, ROI_LEFT, ROI_RIGHT, VOTING_BINSIZE, RANSAC_SIZE;
 int RANSAC_THRESH, RANSAC_EPS, RANSAC_PROB, MOG_LEARNINGRATE, NUM_OF_THREADS;
-int H_MIN, H_MAX, V_MIN, V_MAX, S_MIN, S_MAX;
-int B_MIN, B_MAX, G_MIN, G_MAX, R_MIN, R_MAX;
+// int H_MIN, H_MAX, V_MIN, V_MAX, S_MIN, S_MAX;
+// int B_MIN, B_MAX, G_MIN, G_MAX, R_MIN, R_MAX;
+
+uint RESET;
+bool ALARM;
 
 float MEAN_FIBER_DISTANCE, MEAN_FIBER_DIAMETER, MEAN_X_LEFTOFPRIMARY, MEAN_X_RIGHTOFPRIMARY, MEAN_Y_ABOVEPRIMARY, MEAN_Y_BELOWPRIMARY;
 
@@ -52,36 +57,32 @@ void writeconfig(string);  // write the configration parameters to another file
 void setConfig(po::options_description& config_desc) {
     cv::videostab::RansacParams translation = cv::videostab::RansacParams::translationMotionStd();
     config_desc.add_options()
-        ("ROI.UPPER",       po::value<int>(&ROI_UPPER)->default_value(int(CAM_HEIGHT*1./7.2)), "Location of the 'Region of Interest' depending on")
-        ("ROI.LOWER",       po::value<int>(&ROI_LOWER)->default_value(int(CAM_HEIGHT*1./6)), "the input videostream dimensions (even the default")
-        ("ROI.LEFT",        po::value<int>(&ROI_LEFT)->default_value(int(CAM_WIDTH*1./2.1)), "values) to regulate the upper, lower and the")
-        ("ROI.RIGHT",       po::value<int>(&ROI_RIGHT)->default_value(int(CAM_WIDTH*1./2.5)), "left, right edge of the RoI\n")
+        ("ROI.UPPER", po::value<int>(&ROI_UPPER) -> default_value(static_cast<int>(CAM_HEIGHT*1./7.2)), "Location of the 'Region of Interest' depending on")
+        ("ROI.LOWER", po::value<int>(&ROI_LOWER) -> default_value(static_cast<int>(CAM_HEIGHT*1./6)),   "the input videostream dimensions (even the default")
+        ("ROI.LEFT",  po::value<int>(&ROI_LEFT)  -> default_value(static_cast<int>(CAM_WIDTH*1./2.1)),  "values) to regulate the upper, lower and the")
+        ("ROI.RIGHT", po::value<int>(&ROI_RIGHT) -> default_value(static_cast<int>(CAM_WIDTH*1./2.5)),  "left, right edge of the RoI\n")
 
-        ("BW_THRESH",        po::value<int>(&BW_THRESH)->default_value(140),    "Threshold for converting grayscale to binary image")
-        ("NUM_OF_THREADS",   po::value<int>(&NUM_OF_THREADS)->default_value(8), "Number of fiber threads visible in the camera - primary\n")
-        // ("VOTING_BINSIZE",  po::value<int>(&VOTING_BINSIZE)->default_value(5), "")
+        ("BW_THRESH",      po::value<int>(&BW_THRESH)      -> default_value(140), "Threshold for converting grayscale to binary image")
+        ("NUM_OF_THREADS", po::value<int>(&NUM_OF_THREADS) -> default_value(8),   "Number of fiber threads visible in the camera - primary\n")
+        // ("VOTING_BINSIZE",  po::value<int>(&VOTING_BINSIZE)-> default_value(5), "")
 
-        ("RANSAC.SIZE",     po::value<int>(&RANSAC_SIZE)->default_value(translation.size), "Parameters for the RANSAC (random sample")
-        ("RANSAC.THRESH",   po::value<int>(&RANSAC_THRESH)->default_value(100*translation.thresh), "consensus) model approximation of the motions")
-        ("RANSAC.EPS",      po::value<int>(&RANSAC_EPS)->default_value(100*translation.eps), "size: kind of motion, thresh: max error to")
-        ("RANSAC.PROB",     po::value<int>(&RANSAC_PROB)->default_value(100*translation.prob), "classify as inlier, eps: max outliers ratio, prob: probability of success")
+        ("RANSAC.SIZE",   po::value<int>(&RANSAC_SIZE)   -> default_value(translation.size),       "Parameters for the RANSAC (random sample")
+        ("RANSAC.THRESH", po::value<int>(&RANSAC_THRESH) -> default_value(100*translation.thresh), "consensus) model approximation of the motions")
+        ("RANSAC.EPS",    po::value<int>(&RANSAC_EPS)    -> default_value(100*translation.eps),    "size: kind of motion, thresh: max error to")
+        ("RANSAC.PROB",   po::value<int>(&RANSAC_PROB)   -> default_value(100*translation.prob),   "classify as inlier, eps: max outliers ratio, prob: probability of success")
 
-        ("HOUGH.MIN_DIST",        po::value<int>(&MIN_DIST)->default_value(50), "Minimum distance between detected centers")
-        ("HOUGH.MIN_RADIUS",      po::value<int>(&MIN_RADIUS)->default_value(15), "Minimum/Maximum radius to be detected. ")
-        ("HOUGH.MAX_RADIUS",      po::value<int>(&MAX_RADIUS)->default_value(25), "If =0 every radius is possible")
-        ("HOUGH.CANNY_THRESH",     po::value<int>(&CANNY_THRESH)->default_value(100), "Upper threshold for the Canny edge detector")
-        ("HOUGH.CENTER_THRESH",    po::value<int>(&CENTER_THRESH)->default_value(8), "Threshold for center detection")
-        ("HOUGH.ACCUMULATOR_RES", po::value<int>(&ACCUMULATOR_RES)->default_value(1), "The inverse ratio of resolution\n")
+        ("HOUGH.MIN_DIST",        po::value<int>(&MIN_DIST)        -> default_value(50),  "Minimum distance between detected centers")
+        ("HOUGH.MIN_RADIUS",      po::value<int>(&MIN_RADIUS)      -> default_value(15),  "Minimum/Maximum radius to be detected. ")
+        ("HOUGH.MAX_RADIUS",      po::value<int>(&MAX_RADIUS)      -> default_value(25),  "If =0 every radius is possible")
+        ("HOUGH.CANNY_THRESH",    po::value<int>(&CANNY_THRESH)    -> default_value(100), "Upper threshold for the Canny edge detector")
+        ("HOUGH.CENTER_THRESH",   po::value<int>(&CENTER_THRESH)   -> default_value(8),   "Threshold for center detection")
+        ("HOUGH.ACCUMULATOR_RES", po::value<int>(&ACCUMULATOR_RES) -> default_value(1),   "The inverse ratio of resolution\n")
 
-        ("MOG.LEARNING",    po::value<int>(&MOG_LEARNINGRATE)->default_value(10), "Learning rate of all the background substractor classes")
+        ("MOG.LEARNING", po::value<int>(&MOG_LEARNINGRATE) -> default_value(10), "Learning rate of all the background substractor classes")
     ;
-    }
+}
 
-// void OnClick(int event, int x, int y, int, void* frame) {
-//     if  ( event == EVENT_LBUTTONDOWN ) {
-//         cout << "Left button of the mouse is clicked - position (" << x << ", " << y << ")" << endl;
-//     }
-// }
+void OnClick(int event, int x, int y, int, void* frame) { if ( event == EVENT_LBUTTONDOWN ) RESET = 1; }
 
 // main ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 int main(int argc, char *argv[]) {
@@ -92,14 +93,14 @@ int main(int argc, char *argv[]) {
 
     po::options_description desc("Usage");
     desc.add_options()
-        ("help,h",          "display this message")
-        ("help-config",     "display the configuration parameters")
-        ("onlineconfig,c",  "open configuration window")
-        ("video,v",         po::value<string>(&videoName),                                    "use a video file as input\n(default: CV_CAP_ANY)")
-        ("configfile,f",    po::value<string>(&configName)->default_value("../config00.ini"), "use other than the default config file")
-        ("writeto,w",       po::value<string>(&outputName),                                   "write videostream to the specified file")
-        ("fourcc",          po::value<string>(&fourcc_code),                                  "video codec for writing stream to file")
-        ("write-only",      "do nothing but to write the video stream to file")
+        ("help,h",                                                                             "display this message")
+        ("help-config",                                                                        "display the configuration parameters")
+        ("onlineconfig,c",                                                                     "open configuration window")
+        ("video,v",        po::value<string>(&videoName),                                      "use a video file as input\n(default: CV_CAP_ANY)")
+        ("configfile,f",   po::value<string>(&configName) -> default_value("../config00.ini"), "use other than the default config file")
+        ("writeto,w",      po::value<string>(&outputName),                                     "write videostream to the specified file")
+        ("fourcc",         po::value<string>(&fourcc_code),                                    "video codec for writing stream to file")
+        ("show-only",                                                                         "do nothing but to show and possibly write the stream")
     ;
 
     // Commandline parser, pass arguments to these five options
@@ -113,7 +114,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    bool output(false);  
+    bool output(false);
     bool config(vm.count("onlineconfig"));
 
     VideoCapture cam;
@@ -132,20 +133,20 @@ int main(int argc, char *argv[]) {
 
     // Get the first image from cam/video
     Mat whole;  // container for the 'whole' video frame
-    cam >> whole; // Create first frame from capture/video; without this the HEIGHT/WIDTH etc. will not be defined
+    cam >> whole;  // Create first frame from capture/video; without this the HEIGHT/WIDTH etc. will not be defined
 
     // get the format of the video/image stream
     CAM_HEIGHT = cam.get(CV_CAP_PROP_FRAME_HEIGHT);
     CAM_WIDTH  = cam.get(CV_CAP_PROP_FRAME_WIDTH);
 
     VideoWriter writer;
-    bool write_only(false);
+    bool show_only(false);
     if (vm.count("writeto")) {
         if (vm.count("fourcc")) {
-            int fourcc(CV_FOURCC(fourcc_code.c_str()[0],fourcc_code.c_str()[1],fourcc_code.c_str()[2],fourcc_code.c_str()[3]));
-            writer.open(outputName, fourcc, 15, Size(CAM_WIDTH,CAM_HEIGHT));
+            int fourcc(CV_FOURCC(fourcc_code.c_str()[0], fourcc_code.c_str()[1], fourcc_code.c_str()[2], fourcc_code.c_str()[3]));
+            writer.open(outputName, fourcc, 15, Size(CAM_WIDTH, CAM_HEIGHT));
         } else {
-            writer.open(outputName, CV_FOURCC('F','F','V','1'), 15, Size(CAM_WIDTH,CAM_HEIGHT));
+            writer.open(outputName, CV_FOURCC('F', 'F', 'V', '1'), 15, Size(CAM_WIDTH, CAM_HEIGHT));
         }
 
         if (writer.isOpened()) {
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        write_only = vm.count("write-only");
+        show_only = vm.count("show-only");
     }
 
 
@@ -175,32 +176,39 @@ int main(int argc, char *argv[]) {
         po::store(po::parse_config_file<char>(configName.c_str(), config_desc), config_vm);
         po::notify(config_vm);
 
-        for(const std::pair<string, po::variable_value>& var: config_vm) {
+        for (const std::pair<string, po::variable_value>& var : config_vm) {
             if (var.second.defaulted()) cout << "Parameter " << var.first << " was set to its default value! check config file" << endl;
         }
-    }catch(po::reading_file& e){  // file unreadable
+    }catch(po::reading_file& e) {  // file unreadable
         cout << "error: " << e.what() << "\nDefault values will be set." << endl;
         po::store(po::basic_parsed_options<char>(&config_desc), config_vm);
         po::notify(config_vm);
     }
 
-    if (ROI_LEFT  > CAM_WIDTH*1./2)  ROI_LEFT  = int(CAM_WIDTH*1./2.1);  // once these values are set to a valid state
-    if (ROI_RIGHT > CAM_WIDTH*1./2)  ROI_RIGHT = int(CAM_WIDTH*1./2.5);  // they will remain valid
-    if (ROI_UPPER > CAM_HEIGHT*1./2) ROI_UPPER = int(CAM_HEIGHT*1./7.2);
-    if (ROI_LOWER > CAM_HEIGHT*1./2) ROI_LOWER = int(CAM_HEIGHT*1./6);
+    if (ROI_LEFT  > CAM_WIDTH*1./2)  ROI_LEFT  = static_cast<int>(CAM_WIDTH*1./2.1);  // Check for unvalid position of the roi
+    if (ROI_RIGHT > CAM_WIDTH*1./2)  ROI_RIGHT = static_cast<int>(CAM_WIDTH*1./2.5);  // once these values are set to a valid state
+    if (ROI_UPPER > CAM_HEIGHT*1./2) ROI_UPPER = static_cast<int>(CAM_HEIGHT*1./7.2);  // they will remain valid
+    if (ROI_LOWER > CAM_HEIGHT*1./2) ROI_LOWER = static_cast<int>(CAM_HEIGHT*1./6);
 
-    H_MIN = 30;  // TODO: Either make these parameters part of the config-file/default-value mechanism or delete
-    V_MIN = S_MIN = 65;
-    H_MAX = V_MAX = S_MAX = 150;
+    // H_MIN = 30;
+    // V_MIN = S_MIN = 65;
+    // H_MAX = V_MAX = S_MAX = 150;
 
-    B_MIN = G_MAX = 120;
-    G_MIN = R_MIN = 80;
-    B_MAX = R_MAX = 160;
+    // B_MIN = G_MAX = 120;
+    // G_MIN = R_MIN = 80;
+    // B_MAX = R_MAX = 160;
 
     if (config) createconfigWindow();
 
     char key('a');
     int wait_ms(10);
+
+    RESET = 0;
+    ALARM = false;
+
+    namedWindow("Video Frame");
+    createTrackbar("waitKey duration:", "Video Frame", &wait_ms, 1000, nullptr);
+    setMouseCallback("Video Frame", *OnClick);
 
     cout << "Video format is h: " << CAM_HEIGHT << ", w: " << CAM_WIDTH << "\nLoop starts..." << endl;
 
@@ -213,7 +221,14 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        if (!write_only) {
+        assert(RESET < 4);
+        switch (RESET) {  // Ensure that at least two loops has RESET == true
+            case 0: break;
+            case 1: case 2: RESET++; break;
+            case 3:  RESET = 0; ALARM = false; break;
+        }
+
+        if (!show_only) {
             GaussianBlur(whole, whole, Size(7, 7), 4);  // blurring reduces noise
             // medianBlur(binary, median, 5);
 
@@ -223,19 +238,19 @@ int main(int argc, char *argv[]) {
             double fps = cam.get(CV_CAP_PROP_FPS);
             double pos = cam.get(CV_CAP_PROP_POS_FRAMES);
 
-            Rect white(0,0,115,60);
+            Rect white(0, 0, 115, 60);
             rectangle(whole, white, Scalar::all(0), CV_FILLED, CV_AA, 0);
 
             stringstream s;
             s << "fps: " << fps;
-            putText(whole, s.str(), Point(10,25), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
+            putText(whole, s.str(), Point(10, 25), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
             s.str("");
             s << "no: " << pos;
-            putText(whole, s.str(), Point(10,50), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
+            putText(whole, s.str(), Point(10, 50), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
         }
 
         imshow("Video Frame", whole);  // show the results in windows
-        createTrackbar("waitKey duration:", "Video Frame", &wait_ms, 1000, nullptr);
+        setTrackbarPos("waitKey duration:", "Video Frame", wait_ms);
 
         key = waitKey(wait_ms);  // Capture Keyboard stroke
 
@@ -270,6 +285,7 @@ void clearFeaturesNotFound(vector<Point2f>&, vector<Point2f>&, vector<uchar>&, v
 // void eraseLong(float);
 void stabilize(int method, const vector<Point2f>&, const vector<Point2f>&, Mat&);
 void morphologicalOperations(Mat&, int = 3);
+void observePrimaryFiber(Mat&, Rect);
 void drawCircles(Mat&, const vector<Vec3f>&, Scalar = Scalar(0, 0, 255));
 void drawContours(Mat&);
 void drawPoints(Mat&, const vector<Point2f>&);
@@ -281,7 +297,7 @@ void convertDenseOpticalFlow(const Mat&, Mat&);
 void deleteOutliers(vector<Vec3f>&);
 void updateHistogram(const vector<Vec3f>&);
 bool updatePrimaryWindow(const Vec3f&);
-void calcDistances(const vector<Vec3f>&, vector<float>&); // calculates the differences of the centers of circles
+void calcDistances(const vector<Vec3f>&, vector<float>&);  // calculates the differences of the centers of circles
 void sortCircles(vector<Vec3f>& circles) {  // sort circles by their x-coordinate in ascending order
     std::sort(circles.begin(), circles.end(), [](Vec3f a, Vec3f b){ return a[0] < b[0]; });}
     void getRelevantFlow(const Mat&, const vector<Point2f>&, vector<Point2f>&);
@@ -290,7 +306,7 @@ void sortCircles(vector<Vec3f>& circles) {  // sort circles by their x-coordinat
         mat.resize(newWidth, scalar);
         mat = mat.t();
     }
-template<typename T> void print(const vector<T>& vec) {for(const T& x: vec) cout << x << " ";}
+template<typename T> void print(const vector<T>& vec) {for (const T& x : vec) cout << x << " ";}
 
 // actual doing something with the image –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 void processFrame(Mat& whole) {
@@ -299,8 +315,8 @@ void processFrame(Mat& whole) {
 
     //––– define region of interest (ROI) with parameters set by trackbars ––––––––––––––––––––––––––––––––––––––––––
     Rect ROI(Point(CAM_WIDTH*1./2-ROI_LEFT, CAM_HEIGHT*1./2-ROI_UPPER), Point(CAM_WIDTH*1./2+ROI_RIGHT, CAM_HEIGHT*1./2+ROI_LOWER));
-    drawframe = whole(ROI);  // extract ROI 
-    drawframe.copyTo(frame);  // split in two frames; one for processing and one for drawing and showing 
+    drawframe = whole(ROI);  // extract ROI
+    drawframe.copyTo(frame);  // split in two frames; one for processing and one for drawing and showing
     imshow("Region of interest", frame);
 
     cvtColor(frame, gray, CV_BGR2GRAY);  // compute grayscale image
@@ -331,97 +347,9 @@ void processFrame(Mat& whole) {
     Rect primary_fiber(MEAN_X_LEFTOFPRIMARY, MEAN_Y_ABOVEPRIMARY, MEAN_X_RIGHTOFPRIMARY - MEAN_X_LEFTOFPRIMARY, MEAN_Y_BELOWPRIMARY - MEAN_Y_ABOVEPRIMARY);
 
     //––– Use background substraction for detection of large errors –––––––––––––––––––––––––––––––––––––––––––––––––
-    if (!update_primary) {
-        static Mat fgMOG, fgMOG2, fgGMG, fgMOGs, fgAll;
-        static BackgroundSubtractorMOG  MOG;  // MOG approach 
-        static BackgroundSubtractorMOG2 MOG2(10, 16/*:default values*/, false/*=doShadowDetection*/);  // MOG2 approach
-        static BackgroundSubtractorGMG  GMG;  // GMG approach 
-        // static bool ALERT_MOGS(false), ALERT_ALL(false);
+    if (!update_primary) observePrimaryFiber(whole, primary_fiber);
 
-        // Background substraction of the live image using MOG and MOG2
-        Mat primary_fiber_window = whole(primary_fiber);
-
-        MOG(primary_fiber_window, fgMOG, MOG_LEARNINGRATE*1./100);
-        morphologicalOperations(fgMOG);
-        MOG2(primary_fiber_window, fgMOG2, MOG_LEARNINGRATE*1./100);
-        morphologicalOperations(fgMOG2);
-        GMG(primary_fiber_window, fgGMG, MOG_LEARNINGRATE*1./100);
-        morphologicalOperations(fgGMG, 5);
-
-        multiply(fgMOG, fgMOG2, fgMOGs);
-        multiply(fgGMG, fgMOGs, fgAll);
-        morphologicalOperations(fgAll);
-
-        int thresh_MOG(2000), thresh_MOG2(4000), thresh_GMG(20000), thresh_MOGs(2000), thresh_ALL(3000);
-        int fill_MOG(1), fill_MOG2(1), fill_GMG(1), fill_MOGs(1), fill_All(1);
-        Scalar color_MOG(0, 0, 255), color_MOG2(0, 0, 255), color_GMG(0, 0, 255), color_MOGs(0, 0, 255), color_All(0, 0, 255);
-
-        if (norm(fgMOG)  > thresh_MOG)  { fill_MOG  = -1; color_MOG  = Scalar::all(0); }
-        if (norm(fgMOG2) > thresh_MOG2) { fill_MOG2 = -1; color_MOG2 = Scalar::all(0); }
-        if (norm(fgGMG)  > thresh_GMG)  { fill_GMG  = -1; color_GMG  = Scalar::all(0); }
-        if (norm(fgMOGs) > thresh_MOGs) { fill_MOGs = -1; color_MOGs = Scalar::all(0); }
-        if (norm(fgAll)  > thresh_ALL)  { fill_All  = -1; color_All  = Scalar::all(0); }
-
-        circle(whole, Point(CAM_WIDTH-205, 25), 20, Scalar(0, 0, 255), fill_MOG, CV_AA, 0);
-        putText(whole, "MOG", Point(CAM_WIDTH-219, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOG, 1, CV_AA);
-        circle(whole, Point(CAM_WIDTH-160, 25), 20, Scalar(0, 0, 255), fill_MOG2, CV_AA, 0);
-        putText(whole, "MOG2", Point(CAM_WIDTH-177, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOG2, 1, CV_AA);
-        circle(whole, Point(CAM_WIDTH-115, 25), 20, Scalar(0, 0, 255), fill_GMG, CV_AA, 0);
-        putText(whole, "GMG", Point(CAM_WIDTH-128, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_GMG, 1, CV_AA);
-        circle(whole, Point(CAM_WIDTH-70, 25), 20, Scalar(0, 0, 255), fill_MOGs, CV_AA, 0);
-        putText(whole, "MOGs", Point(CAM_WIDTH-86, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOGs, 1, CV_AA);
-        circle(whole, Point(CAM_WIDTH-25, 25), 20, Scalar(0, 0, 255), fill_All, CV_AA, 0);
-        putText(whole, "ALL", Point(CAM_WIDTH-35, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_All, 1, CV_AA);
-
-        stringstream s;
-        s.str(""); s << "n:" << norm(fgMOG);
-        fgMOG.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
-        putText(fgMOG, s.str(), Point(5,primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
-        s.str(""); s << "n:" << norm(fgMOG2);
-        fgMOG2.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
-        putText(fgMOG2, s.str(), Point(5,primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
-        s.str(""); s << "n:" << norm(fgGMG);
-        fgGMG.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
-        putText(fgGMG, s.str(), Point(5,primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
-        s.str(""); s << "n:" << norm(fgMOGs);
-        fgMOGs.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
-        putText(fgMOGs, s.str(), Point(5,primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
-        s.str(""); s << "n:" << norm(fgAll);
-        fgAll.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
-        putText(fgAll, s.str(), Point(5,primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
-        
-        imshow("Foreground Mask MOG",  fgMOG);
-        imshow("Foreground Mask MOG2", fgMOG2);
-        imshow("Foreground Mask GMG",  fgGMG);
-        imshow("FG multiplication MOG*MOG2", fgMOGs);
-        imshow("FG multiplication All", fgAll);
-
-        Mat primary_fiber_window_hsv_thresh, primary_fiber_window_bgr_thresh;
-        cvtColor(primary_fiber_window, primary_fiber_window_hsv_thresh, CV_BGR2HSV);
-        inRange(primary_fiber_window_hsv_thresh, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), primary_fiber_window_hsv_thresh);
-        inRange(primary_fiber_window, Scalar(B_MIN, G_MIN, R_MIN), Scalar(B_MAX, G_MAX, R_MAX), primary_fiber_window_bgr_thresh);
-
-        morphologicalOperations(primary_fiber_window_bgr_thresh);
-        morphologicalOperations(primary_fiber_window_hsv_thresh);
-
-        vector<vector<Point>> contours;
-        findContours(primary_fiber_window_hsv_thresh.clone(), contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
-
-        std::sort(contours.begin(), contours.end(), [](vector<Point> a, vector<Point> b){ return contourArea(a) > contourArea(b); });
-        Rect largestBlob = boundingRect(contours.front());
-
-        int fill_BGR_thresh(1);
-        Scalar color_BGR_thresh(0, 0, 255);
-
-        if (largestBlob.x + largestBlob.width*1./2 > primary_fiber_window.size().width * 1./2)  { fill_BGR_thresh  = -1; color_BGR_thresh  = Scalar::all(0); }
-
-        circle(whole, Point(CAM_WIDTH-25, 70), 20, Scalar(0, 0, 255), fill_BGR_thresh, CV_AA, 0);
-        putText(whole, "HSV", Point(CAM_WIDTH-37, 74), FONT_HERSHEY_SIMPLEX, 0.4, color_BGR_thresh, 1, CV_AA);
-        rectangle(primary_fiber_window_hsv_thresh, largestBlob, Scalar::all(128), 1, CV_AA, 0);
-
-        imshow("BGR thresholded image", primary_fiber_window_bgr_thresh);
-        imshow("HSV thresholded image", primary_fiber_window_hsv_thresh);
-    }
+    if (RESET) update_primary = true;
 
     rectangle(whole, ROI, Scalar(0, 255, 0), 1, CV_AA, 0);  // draw processed region of interest on whole image
 
@@ -435,7 +363,7 @@ void processFrame(Mat& whole) {
     int x(515), y(205);
     line(whole, Point(x, y-30), Point(x, y+30), Scalar(255, 0, 0), 1, CV_AA);
     line(whole, Point(x-20, y), Point(x+20, y), Scalar(255, 0, 0), 1, CV_AA);
-    ellipse(whole, RotatedRect(Point(x,y),Size(40,60),0), Scalar(255, 0, 0), 1, CV_AA);
+    ellipse(whole, RotatedRect(Point(x, y), Size(40, 60), 0), Scalar(255, 0, 0), 1, CV_AA);
 }
 void stabilizeFrame(Mat& whole) {
     static vector<Point2f> features_prev;
@@ -444,13 +372,18 @@ void stabilizeFrame(Mat& whole) {
     vector<float> err;
 
     static Mat gray_prev;
-    static Mat stabframe_prev;
+    // static Mat stabframe_prev;
     Mat gray_curr;
 
     Rect ROI(Point(CAM_WIDTH*1./2-ROI_LEFT, CAM_HEIGHT*1./2-ROI_UPPER), Point(CAM_WIDTH*1./2+ROI_RIGHT, CAM_HEIGHT*1./2+ROI_LOWER));
     Mat stabframe = whole(ROI).clone();
 
     cvtColor(stabframe, gray_curr, CV_BGR2GRAY);  // compute grayscale image
+
+    if (RESET) {
+        gray_prev.release();
+        features_prev.clear();
+    }
 
     if (gray_prev.size() == gray_curr.size()) {
         //––– Sparse Optical Flow –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -482,7 +415,7 @@ void stabilizeFrame(Mat& whole) {
 
     // store for next loop
     gray_curr.copyTo(gray_prev);
-    stabframe.copyTo(stabframe_prev);
+    // stabframe.copyTo(stabframe_prev);
     findFeatures(gray_curr, "PyramidHARRIS", features_prev);  // find new "prev" features in current image and store
 
     drawPoints(stabframe, features_prev);
@@ -499,7 +432,7 @@ void findFeatures(const Mat& img, string method, vector<Point2f>& feat){  // fin
     // if (draw) drawKeypoints(drawframe, keypoints, drawframe, Scalar(0, 255, 255));
 }
 void clearFeaturesNotFound(vector<Point2f>& feat_prev, vector<Point2f>& feat_curr, vector<uchar>& stat, vector<float>& err) {  // only applicable if stat and feat_curr is defined (through calcOpticalFlowPyrLK)
-    assert (feat_prev.size() == feat_curr.size() && feat_prev.size() == stat.size());  // and the two features sets are the same size
+    assert(feat_prev.size() == feat_curr.size() && feat_prev.size() == stat.size());  // and the two features sets are the same size
 
     auto iter_1 = feat_prev.begin();
     auto iter_2 = feat_curr.begin();
@@ -507,7 +440,7 @@ void clearFeaturesNotFound(vector<Point2f>& feat_prev, vector<Point2f>& feat_cur
     auto it_err = err.begin();
 
     while (iter_1 < feat_prev.end()) {
-        if (!(bool)(*found)) {
+        if (!(static_cast<bool>(*found))) {
             iter_1 = feat_prev.erase(iter_1);
             iter_2 = feat_curr.erase(iter_2);
             found = stat.erase(found);
@@ -527,10 +460,101 @@ void morphologicalOperations(Mat& in, int size) {
     morphologyEx(in, in, MORPH_CLOSE, element);
     morphologyEx(in, in, MORPH_OPEN,  element);
 }
-void getRelevantFlow(const Mat& flow, vector<Point2f>& prev, vector<Point2f>& curr) {
-    assert (!prev.empty() && !flow.empty());
+void observePrimaryFiber(Mat& whole, Rect primary_fiber) {
+    static Mat fgMOG, fgMOG2, fgGMG, fgMOGs, fgAll;
+    static BackgroundSubtractorMOG  MOG;  // MOG approach
+    static BackgroundSubtractorMOG2 MOG2(10, 16/*:default values*/, false/*=doShadowDetection*/);  // MOG2 approach
+    static BackgroundSubtractorGMG  GMG;  // GMG approach
+    // static bool ALERT_MOGS(false), ALERT_ALL(false);
 
-    Mat xy[2]; //X,Y
+    // Background substraction of the live image using MOG and MOG2
+    Mat primary_fiber_window = whole(primary_fiber);
+
+    MOG(primary_fiber_window, fgMOG, MOG_LEARNINGRATE*1./100);
+    morphologicalOperations(fgMOG);
+    MOG2(primary_fiber_window, fgMOG2, MOG_LEARNINGRATE*1./100);
+    morphologicalOperations(fgMOG2);
+    GMG(primary_fiber_window, fgGMG, MOG_LEARNINGRATE*1./100);
+    morphologicalOperations(fgGMG, 5);
+
+    multiply(fgMOG, fgMOG2, fgMOGs);
+    multiply(fgGMG, fgMOGs, fgAll);
+    morphologicalOperations(fgAll);
+
+    int thresh_MOG(2000), thresh_MOG2(4000), thresh_GMG(20000), thresh_MOGs(2000), thresh_ALL(3000);
+    int fill_MOG(1), fill_MOG2(1), fill_GMG(1), fill_MOGs(1), fill_All(1);
+    Scalar color_MOG(0, 0, 255), color_MOG2(0, 0, 255), color_GMG(0, 0, 255), color_MOGs(0, 0, 255), color_All(0, 0, 255);
+
+    if (norm(fgMOG)  > thresh_MOG)  { fill_MOG  = -1; color_MOG  = Scalar::all(0); }
+    if (norm(fgMOG2) > thresh_MOG2) { fill_MOG2 = -1; color_MOG2 = Scalar::all(0); }
+    if (norm(fgGMG)  > thresh_GMG)  { fill_GMG  = -1; color_GMG  = Scalar::all(0); }
+    if (norm(fgMOGs) > thresh_MOGs) { fill_MOGs = -1; color_MOGs = Scalar::all(0); }
+    if (norm(fgAll)  > thresh_ALL)  { fill_All  = -1; color_All  = Scalar::all(0); /*ALARM = true;*/ }
+
+    circle(whole, Point(CAM_WIDTH-205, 25), 20, Scalar(0, 0, 255), fill_MOG, CV_AA, 0);
+    putText(whole, "MOG", Point(CAM_WIDTH-219, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOG, 1, CV_AA);
+    circle(whole, Point(CAM_WIDTH-160, 25), 20, Scalar(0, 0, 255), fill_MOG2, CV_AA, 0);
+    putText(whole, "MOG2", Point(CAM_WIDTH-177, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOG2, 1, CV_AA);
+    circle(whole, Point(CAM_WIDTH-115, 25), 20, Scalar(0, 0, 255), fill_GMG, CV_AA, 0);
+    putText(whole, "GMG", Point(CAM_WIDTH-128, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_GMG, 1, CV_AA);
+    circle(whole, Point(CAM_WIDTH-70, 25), 20, Scalar(0, 0, 255), fill_MOGs, CV_AA, 0);
+    putText(whole, "MOGs", Point(CAM_WIDTH-86, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_MOGs, 1, CV_AA);
+    circle(whole, Point(CAM_WIDTH-25, 25), 20, Scalar(0, 0, 255), fill_All, CV_AA, 0);
+    putText(whole, "ALL", Point(CAM_WIDTH-35, 28), FONT_HERSHEY_SIMPLEX, 0.4, color_All, 1, CV_AA);
+
+    stringstream s;
+    s.str(""); s << "n:" << norm(fgMOG);
+    fgMOG.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
+    putText(fgMOG, s.str(), Point(5, primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
+    s.str(""); s << "n:" << norm(fgMOG2);
+    fgMOG2.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
+    putText(fgMOG2, s.str(), Point(5, primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
+    s.str(""); s << "n:" << norm(fgGMG);
+    fgGMG.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
+    putText(fgGMG, s.str(), Point(5, primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
+    s.str(""); s << "n:" << norm(fgMOGs);
+    fgMOGs.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
+    putText(fgMOGs, s.str(), Point(5, primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
+    s.str(""); s << "n:" << norm(fgAll);
+    fgAll.resize(primary_fiber_window.size().height + 30, Scalar::all(255));
+    putText(fgAll, s.str(), Point(5, primary_fiber_window.size().height + 20), FONT_HERSHEY_SIMPLEX, 0.6, Scalar::all(0), 1, CV_AA);
+
+    imshow("Foreground Mask MOG",  fgMOG);
+    imshow("Foreground Mask MOG2", fgMOG2);
+    imshow("Foreground Mask GMG",  fgGMG);
+    imshow("FG multiplication MOG*MOG2", fgMOGs);
+    imshow("FG multiplication All", fgAll);
+
+    // Mat primary_fiber_window_hsv_thresh, primary_fiber_window_bgr_thresh;
+    // cvtColor(primary_fiber_window, primary_fiber_window_hsv_thresh, CV_BGR2HSV);
+    // inRange(primary_fiber_window_hsv_thresh, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), primary_fiber_window_hsv_thresh);
+    // inRange(primary_fiber_window, Scalar(B_MIN, G_MIN, R_MIN), Scalar(B_MAX, G_MAX, R_MAX), primary_fiber_window_bgr_thresh);
+
+    // morphologicalOperations(primary_fiber_window_bgr_thresh);
+    // morphologicalOperations(primary_fiber_window_hsv_thresh);
+
+    // vector<vector<Point>> contours;
+    // findContours(primary_fiber_window_hsv_thresh.clone(), contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
+
+    // std::sort(contours.begin(), contours.end(), [](vector<Point> a, vector<Point> b){ return contourArea(a) > contourArea(b); });
+    // Rect largestBlob = boundingRect(contours.front());
+
+    // int fill_BGR_thresh(1);
+    // Scalar color_BGR_thresh(0, 0, 255);
+
+    // if (largestBlob.x + largestBlob.width*1./2 > primary_fiber_window.size().width * 1./2)  { fill_BGR_thresh  = -1; color_BGR_thresh  = Scalar::all(0); }
+
+    // circle(whole, Point(CAM_WIDTH-25, 70), 20, Scalar(0, 0, 255), fill_BGR_thresh, CV_AA, 0);
+    // putText(whole, "HSV", Point(CAM_WIDTH-37, 74), FONT_HERSHEY_SIMPLEX, 0.4, color_BGR_thresh, 1, CV_AA);
+    // rectangle(primary_fiber_window_hsv_thresh, largestBlob, Scalar::all(128), 1, CV_AA, 0);
+
+    // imshow("BGR thresholded image", primary_fiber_window_bgr_thresh);
+    // imshow("HSV thresholded image", primary_fiber_window_hsv_thresh);
+}
+void getRelevantFlow(const Mat& flow, vector<Point2f>& prev, vector<Point2f>& curr) {
+    assert(!prev.empty() && !flow.empty());
+
+    Mat xy[2];  // X,Y
     split(flow, xy);
     curr.clear();
 
@@ -540,8 +564,8 @@ void getRelevantFlow(const Mat& flow, vector<Point2f>& prev, vector<Point2f>& cu
         if (x > flow.rows || y > flow.cols) {
             i = prev.erase(i);
         } else {
-            float new_x = x + xy[0].at<float>(x,y);
-            float new_y = y + xy[0].at<float>(x,y);
+            float new_x = x + xy[0].at<float>(x, y);
+            float new_y = y + xy[0].at<float>(x, y);
 
             curr.push_back(Point2f(new_x, new_y));
             ++i;
@@ -551,18 +575,20 @@ void getRelevantFlow(const Mat& flow, vector<Point2f>& prev, vector<Point2f>& cu
 void stabilize_OpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr, Mat& whole) {
     Point shift = getOpticalFlow(feat_prev, feat_curr);
 
-    Mat trans_mat = (Mat_<float>(2,3) << 1, 0, -shift.x, 0, 1, -shift.y);  // Creates a translation matrix with the mean optical flow
+    Mat trans_mat = (Mat_<float>(2, 3) << 1, 0, -shift.x, 0, 1, -shift.y);  // Creates a translation matrix with the mean optical flow
     warpAffine(whole, whole, trans_mat, whole.size());  // translates the whole frame with the matrix
 }
 void stabilize_RigidTransform(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr, Mat& whole) {
     static Mat prevMotions = Mat::eye(3, 3, CV_64F);
 
+    if (RESET) prevMotions = Mat::eye(3, 3, CV_64F);
+
     Mat M = estimateRigidTransform(feat_prev, feat_curr, false);
 
     M.resize(3, 0);
-    M.at<double>(2,2) = 1;
-    M.at<double>(0,0) = M.at<double>(1,1) = 1;
-    M.at<double>(1,0) = M.at<double>(0,1) = 0;
+    M.at<double>(2, 2) = 1;
+    M.at<double>(0, 0) = M.at<double>(1, 1) = 1;
+    M.at<double>(1, 0) = M.at<double>(0, 1) = 0;
 
     prevMotions = M * prevMotions;
 
@@ -571,12 +597,14 @@ void stabilize_RigidTransform(const vector<Point2f>& feat_prev, const vector<Poi
 void stabilize_Homography(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr, Mat& whole) {
     static Mat prevMotions = Mat::eye(3, 3, CV_64F);
 
+    if (RESET) prevMotions = Mat::eye(3, 3, CV_64F);
+
     Mat M = findHomography(feat_prev, feat_curr, CV_RANSAC);
 
-    M.at<double>(2,2) = 1;
-    M.at<double>(2,1) = M.at<double>(2,0) = 0;
-    M.at<double>(0,0) = M.at<double>(1,1) = 1;
-    M.at<double>(1,0) = M.at<double>(0,1) = 0;
+    M.at<double>(2, 2) = 1;
+    M.at<double>(2, 1) = M.at<double>(2, 0) = 0;
+    M.at<double>(0, 0) = M.at<double>(1, 1) = 1;
+    M.at<double>(1, 0) = M.at<double>(0, 1) = 0;
 
     prevMotions = M * prevMotions;
 
@@ -590,14 +618,16 @@ void stabilize_Homography(const vector<Point2f>& feat_prev, const vector<Point2f
 //     warpAffine(whole, whole, trans_mat, whole.size(), WARP_INVERSE_MAP);  // translates the whole frame with the matrix
 // }
 void stabilize_Videostab(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr, Mat& whole) {
-    using namespace cv::videostab;
-    //static Ptr<OnePassStabilizer> onePassStabilizer = new OnePassStabilizer();
+    // static Ptr<OnePassStabilizer> onePassStabilizer = new OnePassStabilizer();
 
-    static Mat prevMotions = Mat::eye(3,3,CV_32FC1);
+    static Mat prevMotions = Mat::eye(3, 3, CV_32FC1);
+
+    if (RESET) prevMotions = Mat::eye(3, 3, CV_64F);
+
     // static vector<Mat> motions;  // here the motion prev->curr must be estimated
     // static int k = 1;
 
-    Mat M = estimateGlobalMotionRobust(feat_prev, feat_curr, TRANSLATION, RansacParams(RANSAC_SIZE, RANSAC_THRESH*1./100, RANSAC_EPS*1./100, RANSAC_PROB*1./100));
+    Mat M = cv::videostab::estimateGlobalMotionRobust(feat_prev, feat_curr, cv::videostab::TRANSLATION, cv::videostab::RansacParams(RANSAC_SIZE, RANSAC_THRESH*1./100, RANSAC_EPS*1./100, RANSAC_PROB*1./100));
     prevMotions = M * prevMotions;
 
     warpPerspective(whole, whole, prevMotions, whole.size(), WARP_INVERSE_MAP);
@@ -615,7 +645,7 @@ void stabilize(int method, const vector<Point2f>& feat_prev, const vector<Point2
     }
 }
 Point2f getOpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr) {  // calculate mean differences of the feature points
-    assert (feat_prev.size() == feat_curr.size());
+    assert(feat_prev.size() == feat_curr.size());
 
     // Averaging approach
     float x_diff_mean(0), y_diff_mean(0);
@@ -626,8 +656,8 @@ Point2f getOpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& 
     // TH2D votingHist("votingHist", "", fsize.width*2./VOTING_BINSIZE, -fsize.width, fsize.width,
                                       // fsize.height*2./VOTING_BINSIZE, -fsize.height, fsize.height);
 
-    for(unsigned int i = 0; i < feat_prev.size(); i++) {
-        // If Pyramidal Lucas Kanade didn't really find the feature, skip it 
+    for (unsigned int i = 0; i < feat_prev.size(); i++) {
+        // If Pyramidal Lucas Kanade didn't really find the feature, skip it
         // if (status[i] == false)  // removed due to the function 'clearFeaturesNotFound'
         //     continue;
 
@@ -660,13 +690,13 @@ Point2f getDenseOpticalFlowVoting(const Mat& flow) {
     TH2D votingHist("votingHist", "", fsize.width*2./VOTING_BINSIZE, -fsize.width, fsize.width,
       fsize.height*2./VOTING_BINSIZE, -fsize.height, fsize.height);
 
-    Mat xy[2]; //X,Y
+    Mat xy[2];  // X,Y
     split(flow, xy);
 
-    for(int i = 0; i < flow.size().height; i++) {
+    for (int i = 0; i < flow.size().height; i++) {
         for (int j = 0; j < flow.size().width; j++) {
-            double x_diff = xy[0].at<float>(i,j);
-            double y_diff = xy[1].at<float>(i,j);
+            double x_diff = xy[0].at<float>(i, j);
+            double y_diff = xy[1].at<float>(i, j);
             if (x_diff == 0 && y_diff == 0) continue;
             votingHist.Fill(x_diff, y_diff);
         }
@@ -684,7 +714,7 @@ Point2f getDenseOpticalFlowVoting(const Mat& flow) {
 template<typename T, int size>
 vector<T> extractValues(const vector<Vec<T, size>> vec, int i) {
     vector<T> returnvec;
-    for (const Vec<T, size>& x: vec) returnvec.push_back(x[i]);
+    for (const Vec<T, size>& x : vec) returnvec.push_back(x[i]);
         return returnvec;
 }
 void removeOuterOverflows(vector<Vec3f>& vec, vector<int>& indices) {
@@ -693,16 +723,16 @@ void removeOuterOverflows(vector<Vec3f>& vec, vector<int>& indices) {
 
     while (changed) {
         changed = false;
-        if(std::find(indices.begin(), indices.end(), size) != indices.end()) {
+        if (std::find(indices.begin(), indices.end(), size) != indices.end()) {
             vec.pop_back();
             indices.erase(std::find(indices.begin(), indices.end(), size));
             changed = true;
             // cout << "last element erased. " << endl;
         }
-        if(std::find(indices.begin(), indices.end(), 0) != indices.end()) {
+        if (std::find(indices.begin(), indices.end(), 0) != indices.end()) {
             vec.erase(vec.begin());
             indices.erase(std::find(indices.begin(), indices.end(), 0));
-            for(uint j = 0; j < indices.size(); j++) indices[j]--;
+            for (uint j = 0; j < indices.size(); j++) indices[j]--;
                 changed = true;
             // cout << "first element erased. " << endl;
         }
@@ -710,6 +740,8 @@ void removeOuterOverflows(vector<Vec3f>& vec, vector<int>& indices) {
 }
 bool updatePrimaryWindow(const Vec3f& last_circ) {
     static int n(0);
+
+    if (RESET) n = 0;
 
     float x_leftofprimary  = last_circ[0] + MEAN_FIBER_DISTANCE * 1./2 + CAM_WIDTH*1./2 - ROI_LEFT;
     float x_rightofprimary = last_circ[0] + MEAN_FIBER_DISTANCE * 5./2 + CAM_WIDTH*1./2 - ROI_LEFT;
@@ -728,8 +760,7 @@ bool updatePrimaryWindow(const Vec3f& last_circ) {
     MEAN_Y_ABOVEPRIMARY /= n;
     MEAN_Y_BELOWPRIMARY /= n;
 
-    if (n>50) return false;
-    return true;
+    return !(n > 50);
 }
 void updateHistogram(const vector<Vec3f>& circles) {
     if (circles.empty()) return;
@@ -744,14 +775,14 @@ void updateHistogram(const vector<Vec3f>& circles) {
     // cout << "]" << endl;
 
     // vector<int> overflows;
-    for(uint i = 0; i < circle_distances.size(); i++) {
+    for (uint i = 0; i < circle_distances.size(); i++) {
         /*int bin = */fiberDistances.Fill(circle_distances[i]);
         // if (bin <= 0 || bin > fiberDistances.GetNbinsX()) overflows.push_back(i);
     }
 
     // removeOuterOverflows(circles, overflows);
 
-    for(const Vec3f& x: circles) fiberDiameters.Fill(2*x[2]);
+    for (const Vec3f& x : circles) fiberDiameters.Fill(2*x[2]);
 
     MEAN_FIBER_DISTANCE = fiberDistances.GetMean();  // update the global mean
     MEAN_FIBER_DIAMETER = fiberDiameters.GetMean();  // update the global mean
@@ -766,7 +797,7 @@ void calcDistances(const vector<Vec3f>& circles, vector<float>& out) {
 
     Vec3f last = circles.front();
 
-    for(uint i=1; i < circles.size(); i++) {
+    for (uint i=1; i < circles.size(); i++) {
         Vec3f c = circles[i];
 
         float diff = sqrt(pow(c[0] - last[0], 2) + pow(c[1] - last[1], 2));
@@ -794,8 +825,8 @@ void deleteOutliers(vector<Vec3f>& circles) {
 
     // calculation of the means
     float y_coord_mean = 0, x_coord_mean = 0;
-    for(float& y: y_coordinates) y_coord_mean += y;
-        for(float& x: x_coordinates) x_coord_mean += x;
+    for (float& y : y_coordinates) y_coord_mean += y;
+        for (float& x : x_coordinates) x_coord_mean += x;
             y_coord_mean /= y_coordinates.size();
         x_coord_mean /= x_coordinates.size();
 
@@ -811,7 +842,7 @@ void deleteOutliers(vector<Vec3f>& circles) {
     // Results of the procedure, show rejected circles and inliners on the frame and remove outliers
         drawCircles(drawframe, circles);
         circles.erase(remove_if(circles.begin(), circles.end(),
-            [inlier_rect](Vec3f a){ 
+            [inlier_rect](Vec3f a){
                 return !inlier_rect.contains(Point(a[0], a[1]));
             })
         , circles.end());
@@ -821,7 +852,7 @@ void deleteOutliers(vector<Vec3f>& circles) {
     }
 // a bunch of drawing functions ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 void drawCircles(Mat& drawframe, const vector<Vec3f>& circles, Scalar color) {
-    for (const Vec3f& circ: circles) {
+    for (const Vec3f& circ : circles) {
         // speichert die ersten beiden Einträge von vector<Vec3f> circles in center und den dritten Wert in radius
             Point center(circ[0], circ[1]);
             int radius(circ[2]);
@@ -832,44 +863,44 @@ void drawCircles(Mat& drawframe, const vector<Vec3f>& circles, Scalar color) {
 }
 void drawPoints(Mat& drawframe, const vector<Point2f>& feat) {
     if (feat.empty()) cout << "Vector of Point2f \"feat\" empty." << endl;
-    for (const Point2f& x: feat) {
+    for (const Point2f& x : feat) {
         circle(drawframe, x, 2, Scalar(0, 255, 255), -1, CV_AA, 0);
     }
 }
 void drawArrows(Mat& drawframe, const vector<Point2f>& feat_1, const vector<Point2f>& feat_2) {
-    assert (feat_1.size() == feat_2.size());  // zeichne Pfeile zwischen den zugeordneten Paaren von Punkten
+    assert(feat_1.size() == feat_2.size());  // zeichne Pfeile zwischen den zugeordneten Paaren von Punkten
 
-    for(unsigned int i = 0; i < feat_1.size(); i++) {
-        arrowedLine(drawframe, feat_1[i], feat_2[i], Scalar(255,0,0), 1, CV_AA, 0, 0.3);
+    for (unsigned int i = 0; i < feat_1.size(); i++) {
+        arrowedLine(drawframe, feat_1[i], feat_2[i], Scalar(255, 0, 0), 1, CV_AA, 0, 0.3);
     }
 }
 void showOpticalFlow(Mat& drawframe, const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr) {
     Point shift = getOpticalFlow(feat_prev, feat_curr);
-    Rect white(0,0,200,60);
+    Rect white(0, 0, 200, 60);
     rectangle(drawframe, white, Scalar::all(0), CV_FILLED, CV_AA, 0);
-    
+
     stringstream s;
     s.str("");
     s << "x_shift: " << shift.x;
-    putText(drawframe, s.str(), Point(10,25), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
+    putText(drawframe, s.str(), Point(10, 25), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
     s.str("");
     s << "y_shift: " << shift.y;
-    putText(drawframe, s.str(), Point(10,50), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
+    putText(drawframe, s.str(), Point(10, 50), FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(255), 1, CV_AA);
 }
 void convertDenseOpticalFlow(const Mat& flow, Mat& out) {
-    Mat xy[2]; //X,Y
+    Mat xy[2];  // X,Y
     split(flow, xy);
-    
-    //calculate angle and magnitude
+
+    // calculate angle and magnitude
     Mat magnitude, angle;
     cartToPolar(xy[0], xy[1], magnitude, angle, true);
-    
-    //translate magnitude to range [0;1]
+
+    // translate magnitude to range [0;1]
     double mag_max;
     minMaxLoc(magnitude, 0, &mag_max);
     magnitude.convertTo(magnitude, -1, 1.0/mag_max);
-    
-    //build hsv image
+
+    // build hsv image
     Mat _hls[3], hsv;
     _hls[0] = angle;
     _hls[1] = Mat::ones(angle.size(), CV_32F);
@@ -934,7 +965,7 @@ void max_callback(int, void*) {
 void createconfigWindow() {  // create the window where the configration trackbars should be displayed (config==true)
     namedWindow("configration window" , WINDOW_NORMAL);
     namedWindow("RANSAC Parameters", WINDOW_NORMAL);
-    namedWindow("HSV/BGR Thresholds", WINDOW_NORMAL);
+    // namedWindow("HSV/BGR Thresholds", WINDOW_NORMAL);
 
     createTrackbar("Lower boundary of ROI:", "configration window", &ROI_LOWER, CAM_HEIGHT*1./2, correctValues);
     createTrackbar("Upper boundary of ROI:", "configration window", &ROI_UPPER, CAM_HEIGHT*1./2, correctValues);
@@ -958,7 +989,7 @@ void createconfigWindow() {  // create the window where the configration trackba
     createTrackbar("Maximum outlier ratio (%):", "RANSAC Parameters", &RANSAC_EPS, 99, correctValues);
     createTrackbar("Success probability (%):",   "RANSAC Parameters", &RANSAC_PROB, 99, correctValues);
 
-    createTrackbar("H Min:", "HSV/BGR Thresholds", &H_MIN, 255, nullptr);
+/*    createTrackbar("H Min:", "HSV/BGR Thresholds", &H_MIN, 255, nullptr);
     createTrackbar("H Max:", "HSV/BGR Thresholds", &H_MAX, 255, nullptr);
     createTrackbar("V Min:", "HSV/BGR Thresholds", &V_MIN, 255, nullptr);
     createTrackbar("V Max:", "HSV/BGR Thresholds", &V_MAX, 255, nullptr);
@@ -970,7 +1001,7 @@ void createconfigWindow() {  // create the window where the configration trackba
     createTrackbar("G Min:", "HSV/BGR Thresholds", &G_MIN, 255, nullptr);
     createTrackbar("G Max:", "HSV/BGR Thresholds", &G_MAX, 255, nullptr);
     createTrackbar("R Min:", "HSV/BGR Thresholds", &R_MIN, 255, nullptr);
-    createTrackbar("R Max:", "HSV/BGR Thresholds", &R_MAX, 255, nullptr);
+    createTrackbar("R Max:", "HSV/BGR Thresholds", &R_MAX, 255, nullptr);*/
 }
 // writing to the configration files –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 void writeconfig(string configName) {
@@ -1059,8 +1090,8 @@ void writeconfig(string configName) {
 
 //         if (name == string("BW_THRESH") && !set_BW_THRESH) {
 //             BW_THRESH = value;
-//             set_BW_THRESH = true;        
-//         }        
+//             set_BW_THRESH = true;
+//         }
 //         if (name == string("CANNY_THRESH") && !set_canny_thresh) {
 //             CANNY_THRESH = value;
 //             set_canny_thresh = true;
@@ -1079,11 +1110,11 @@ void writeconfig(string configName) {
 //         }
 //         if (name == string("MAX_RADIUS") && !set_max_radius) {
 //             MAX_RADIUS = value;
-//             set_max_radius = true;    
+//             set_max_radius = true;
 //         }
 //         if (name == string("ACCUMULATOR_RES") && !set_accumulator_res) {
 //             ACCUMULATOR_RES = value;
-//             set_accumulator_res = true;    
+//             set_accumulator_res = true;
 //         }
 //         if (name == string("ROI_UPPER") && !set_ROI_UPPER) {
 //             ROI_UPPER = value;
@@ -1132,7 +1163,7 @@ void writeconfig(string configName) {
 //     bool hougH_SET(SET_ACCUMULATOR_RES && set_min_dist && set_canny_thresh && set_center_thresh && set_min_radius && set_max_radius);
 //     bool roi_set(set_ROI_UPPER && set_roi_lower && set_roi_left && set_roi_right);
 //     bool ransac_params_set(set_ransac_eps && set_ransac_prob && set_ransac_thresh && set_ransac_size);
-    
+
 //     bool all_set(set_BW_THRESH && set_voting_binsize && hougH_SET && roi_set && ransac_params_set && set_MOG_LEARNING);
 
 
