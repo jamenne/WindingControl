@@ -17,6 +17,8 @@
 
 #include <boost/program_options.hpp>
 
+#include <mvIMPACT_CPP/mvIMPACT_acquire.h>
+
 #include <iostream>
 #include <string>
 #include <vector>

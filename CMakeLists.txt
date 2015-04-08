@@ -30,6 +30,11 @@ FIND_PACKAGE( Boost 1.40 COMPONENTS program_options REQUIRED )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 set( LIBRARIES ${LIBRARIES} ${Boost_LIBRARIES} )
 
+# Include mvImpact acquire SDK
+find_package( mvIMPACT REQUIRED )
+INCLUDE_DIRECTORIES( ${mvIMPACT_INCLUDE_DIRS} )
+set( LIBRARIES ${LIBRARIES} ${mvIMPACT_LIBRARIES} )
+
 if( ${APPLE} )
 
   MESSAGE( STATUS "Building for Mac OS X, switching on C++11 flags for Mac OS X/clang" )
