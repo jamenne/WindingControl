@@ -1,0 +1,36 @@
+\ifx\mcitethebibliography\mciteundefinedmacro
+\PackageError{LHCb.bst}{mciteplus.sty has not been loaded}
+{This bibstyle requires the use of the mciteplus package.}\fi
+\providecommand{\href}[2]{#2}
+\begin{mcitethebibliography}{1}
+\mciteSetBstSublistMode{n}
+\mciteSetBstMaxWidthForm{subitem}{\alph{mcitesubitemcount})}
+\mciteSetBstSublistLabelBeginEnd{\mcitemaxwidthsubitemform\space}
+{\relax}{\relax}
+
+\bibitem{LHCb-TDR-015}
+LHCb collaboration, \ifthenelse{\boolean{articletitles}}{\emph{{LHCb Tracker
+  Upgrade Technical Design Report}}, }{}
+  \href{http://cdsweb.cern.ch/search?p=CERN-LHCC-2014-001&f=reportnumber&action_search=Search&c=LHCb+Reports}
+  {CERN-LHCC-2014-001}.
+\newblock LHCb-TDR-015\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem{FibreMatProduction}
+R.~Ekelhof and J.~Mueller, \ifthenelse{\boolean{articletitles}}{\emph{{Fibre
+  Mat Production Dortmund}}, }{} Tech. Rep. LHCb-INT-2014-046.
+  CERN-LHCb-INT-2014-046, CERN, Geneva, Nov, 2014\relax
+\mciteBstWouldAddEndPuncttrue
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{\mcitedefaultendpunct}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\bibitem{WindingSimulation}
+J.~Mueller, \ifthenelse{\boolean{articletitles}}{\emph{{Winding Simulation}},
+  }{} tech. rep.\relax
+\mciteBstWouldAddEndPunctfalse
+\mciteSetBstMidEndSepPunct{\mcitedefaultmidpunct}
+{}{\mcitedefaultseppunct}\relax
+\EndOfBibitem
+\end{mcitethebibliography}

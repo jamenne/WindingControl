@@ -1,0 +1,23 @@
+\section{Quality Requirements}
+\label{sec:QualityRequirements}
+
+To ensure a spatial resolution better than \SI{100}{\micro\metre}, the fibres have to be accurately positioned. Due to many different influences problems occur during the winding process. The exclusive error is the wrong positioning of a fibre. This will manipulate the continuing fibre mat production, so that other fibres can't fit in their decided position. In the most situations the error is limited to a small region, but a small error can get worse in higher layers.
+Plots shown here are the result of a winding simulation. For more Informations see \cite{WindingSimulation}.
+
+One important point is the fluctuating diameter of the scintillating fibre. The trend of the diameter shows thick regions up to \SI{500}{\micro\metre}. These thick regions, called bumps, cause a wrong positioning of the neighbouring fibres. An example of such a error is showed in Fig. \ref{blob}.
+\begin{figure}[tb]
+\begin{center}
+\input{figs/Blob} %
+\caption[Effect of a bump to the fibre matrix.]{Effect of a bump to the fibre matrix. A bump at $x=$\SI{93}{\mm} (ca. \SI{300}{\micro\metre}) in the first layer causes errors, which propagate till the highest layer.\label{blob}}
+\end{center}
+\end{figure}
+
+Another problem are fibres, who skip a notch and create therefore an empty space. These empty spaces will be filled up by fibres belong to a higher layer actually. This will cause there an empty space too (see Fig. \ref{missing}).
+\begin{figure}[tb]
+\begin{center}
+\input{figs/Mat_Fail2Layer} %
+\caption{Cantle of a cross section of a fibre mat (12 to \SI{16}{\mm}). Due to a missing fibre in the second layer, fibres from the higher layers fill up the empty space. \label{missing}}
+\end{center}
+\end{figure}
+
+On the basis of this influences (and many more) a good positioning of the fibres during the winding process has to be guaranteed to receive a good fibre mat. Unfortenuately a scintllating fibre without bumps can't be delivered by the manufacturer. As a result of this bumps which cause problems have to be cut out. To make a statement about the positioning of the fibres and if a bump has to be cut out, a camera system will be used to monitor the fibres exactly.

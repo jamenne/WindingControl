@@ -1,0 +1,123 @@
+%\pdfoutput=1
+% Uncomment line above if submitting to arXiv and using pdflatex
+
+% $Id: main.tex 67452 2015-02-10 11:22:35Z roldeman $
+% ============================================================================
+% Purpose: Template for LHCb documents
+% Authors: Tomasz Skwarnicki, Roger Forty, Ulrik Egede
+% Created on: 2010-09-24
+% ============================================================================
+\documentclass[12pt,a4paper]{article}
+% For two column text, add "twocolumn" as an option to the document
+% class. Also uncomment the two "onecolumn" and "twocolumn" lines
+% around the title page below.
+
+% Variables that controls behaviour
+\usepackage{ifthen} % for conditional statements
+\newboolean{pdflatex}
+\setboolean{pdflatex}{true} % False for eps figures 
+
+\newboolean{articletitles}
+\setboolean{articletitles}{true} % False removes titles in references
+
+\newboolean{uprightparticles}
+\setboolean{uprightparticles}{false} %True for upright particle symbols
+
+\newboolean{inbibliography}
+\setboolean{inbibliography}{false} %True once you enter the bibliography
+
+%use footref in title
+\usepackage{footmisc}
+
+\usepackage{multirow}
+
+%nice tables
+\usepackage{booktabs}
+
+%units
+\usepackage[multi-part-units=brackets,,exponent-product={\cdot}, separate-uncertainty=true]{siunitx}
+
+%figure
+\usepackage{subfigure}
+
+%tikz
+\usepackage{tikz}
+\usepackage{tikzscale}
+\usetikzlibrary{patterns}
+\usetikzlibrary{plotmarks}
+
+%has to be the last
+\input{preamble}
+
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Title     %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\setcounter{footnote}{0}
+
+% %%%%%%% CHOOSE TITLE PAGE--------
+%\onecolumn
+%\input{title-LHCb-ANA}
+%\input{title-LHCb-CONF}
+%\input{title-LHCb-PAPER}
+\input{title-LHCb-INT}
+%\twocolumn
+% %%%%%%%%%%%%% ---------
+
+\renewcommand{\thefootnote}{\arabic{footnote}}
+\setcounter{footnote}{0}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%  Table of Content   %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% Uncomment next 2 lines if desired
+%\tableofcontents
+%\cleardoublepage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Main text %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagestyle{plain} % restore page numbers for the main text
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+%% Uncomment during review phase. 
+%% Comment before a final submission.
+\linenumbers
+
+% You can include short sections directly in the main tex file.
+% However, for larger papers it is desirable to split the text into
+% several semiautonomous files, which can be revised independently.
+% This is especially useful when developing a document in
+% collaboration with several people, since then different parts can be
+% edited independently.  This type of file organization is shown here.
+% 
+
+\input{introduction}
+
+\input{winding}
+
+\input{qualityrequirements}
+
+\input{hardware}
+
+\input{software}
+
+\input{results}
+
+\input{summary}
+
+
+
+
+\addcontentsline{toc}{section}{References}
+\setboolean{inbibliography}{true}
+\bibliographystyle{LHCb}
+\bibliography{main,LHCb-PAPER,LHCb-CONF,LHCb-DP,LHCb-TDR,scifi}
+
+\end{document}
