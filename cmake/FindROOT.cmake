@@ -15,6 +15,7 @@ MESSAGE(STATUS "Looking for Root...")
 SET(ROOT_CONFIG_SEARCHPATH
   ${SIMPATH}/tools/root/bin
   $ENV{ROOTSYS}/bin
+  /usr/local/bin/
 )
 
 SET(ROOT_DEFINITIONS "")
@@ -120,6 +121,7 @@ IF (ROOT_FOUND)
 #  REMOVE_FROM_LIST(root_flags "${root_libs_all}" "${root_library}")
 
   SET(ROOT_LIBRARIES ${root_flags})
+  SET(ROOFIT_LIBRARIES "-lRooFit -lRooFitCore -lRooStats -lHtml -lMinuit -lThread -lFoam -lMatrix -lMathMore")
 
   # Make variables changeble to the advanced user
   MARK_AS_ADVANCED( ROOT_LIBRARY_DIR ROOT_INCLUDE_DIR ROOT_DEFINITIONS)
@@ -128,6 +130,7 @@ IF (ROOT_FOUND)
   SET( ROOT_INCLUDES ${ROOT_INCLUDE_DIR})
 
   SET(LD_LIBRARY_PATH ${LD_LIBRARY_PATH} ${ROOT_LIBRARY_DIR})
+
 
   #######################################
   #
@@ -141,6 +144,7 @@ IF (ROOT_FOUND)
     PATHS ${ROOT_BINARY_DIR}
     NO_DEFAULT_PATH
     )
+
 
 ENDIF (ROOT_FOUND)
 
@@ -267,3 +271,71 @@ MACRO (GENERATE_ROOT_TEST_SCRIPT SCRIPT_FULL_NAME)
   EXEC_PROGRAM(/bin/chmod ARGS "u+x  ${new_path}/${shell_script_name}")
 
 ENDMACRO (GENERATE_ROOT_TEST_SCRIPT)
+
+#
+# A macro that uses rootcint to generate dictionaries for ROOT classes.
+#
+# The first argument is the final library that will hold the dictionaries, the
+# other arguments are the header files of the classes that need a dictionary.
+#
+
+macro (root_generate_dictionaries_local)
+
+  set (_INHEADERS ${ARGV})
+  list (GET _INHEADERS 0 _FINALDICT)
+  list (REMOVE_AT _INHEADERS 0)
+
+  foreach (_INHEADER ${_INHEADERS})
+
+    get_filename_component (_CLASS_BASE_NAME ${_INHEADER} NAME_WE)
+    set (_OUTDICT ${_CLASS_BASE_NAME}_dict.cc)
+    set (_OUTCOMP ${_CLASS_BASE_NAME}_dict.cc_completed)
+    set (_OUTTARGET ${_CLASS_BASE_NAME}_TARGET)
+    set (_OUTDICT_HEADER ${_CLASS_BASE_NAME}_dict.h)
+    set (_INHEADER_LINKDEF ${_CLASS_BASE_NAME}_LinkDef.h)
+    get_property(inc_dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER_LINKDEF})
+      add_custom_command (
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${_OUTCOMP} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT_HEADER}
+        #COMMAND LD_LIBRARY_PATH=${Root_LIBDIR}:$ENV{LD_LIBRARY_PATH} ${ROOTSYS}/bin/rootcint -f ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} -c -I${Root_INCDIR} -p ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER} ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER_LINKDEF}
+        COMMAND LD_LIBRARY_PATH=${Root_LIBDIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_SOURCE_DIR}/cmake/Modules/rootcint_handler.py ${ROOTSYS}/bin/rootcint ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER} ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER_LINKDEF} ${inc_dirs}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}
+        IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}
+        COMMENT "Generating dictionary for class ${_CLASS_BASE_NAME} with LinkDef ${_INHEADER_LINKDEF}"
+      )
+    else (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER_LINKDEF})
+      add_custom_command (
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${_OUTCOMP} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT_HEADER}
+        #COMMAND LD_LIBRARY_PATH=${Root_LIBDIR}:$ENV{LD_LIBRARY_PATH} ${ROOTSYS}/bin/rootcint -f ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} -c -I${Root_INCDIR} -p ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}
+        COMMAND LD_LIBRARY_PATH=${Root_LIBDIR}:$ENV{LD_LIBRARY_PATH} ${CMAKE_SOURCE_DIR}/cmake/Modules/rootcint_handler.py ${ROOTSYS}/bin/rootcint ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}  ${inc_dirs}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}
+        IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER}
+        COMMENT "Generating dictionary for class ${_CLASS_BASE_NAME}"
+      )
+    endif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${_INHEADER_LINKDEF})
+
+    add_custom_target(${_OUTTARGET} DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${_OUTCOMP} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT_HEADER})
+    list (APPEND _ROOT_DICTS ${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT})
+
+  endforeach ()
+
+  # This command adds at once the dictionaries to a single static library
+  #add_library(${_FINALDICT} SHARED ${_ROOT_DICTS}) # Prevent an isolated library for the dictionary => commented out
+
+  # make sure library depends on rootcint output (otherwise multi-core builds will fail)
+  foreach (_INHEADER ${_INHEADERS})
+    get_filename_component (_CLASS_BASE_NAME ${_INHEADER} NAME_WE)
+    set (_OUTDICT ${_CLASS_BASE_NAME}_dict.cc)
+    set (_OUTCOMP ${_CLASS_BASE_NAME}_dict.cc_completed)
+    set (_OUTDICT_HEADER ${_CLASS_BASE_NAME}_dict.h)
+    set (_OUTTARGET ${_CLASS_BASE_NAME}_TARGET)
+    # Tell CMake the source won't be available until build time.
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT} PROPERTIES GENERATED 1)
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/${_OUTCOMP} PROPERTIES GENERATED 1)
+    SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/${_OUTDICT_HEADER} PROPERTIES GENERATED 1)
+    #add_dependencies(${_FINALDICT} ${_OUTTARGET}) # As no library is built, this needed to be commented out. Transfer to your local CMakeLists.txt
+  endforeach ()
+
+  set(${_FINALDICT} "${_ROOT_DICTS}")
+endmacro ()
