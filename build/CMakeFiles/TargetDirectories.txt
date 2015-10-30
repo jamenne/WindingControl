@@ -1,1 +1,0 @@
-/home/e5a-labor/src/Winding Control/windingcontrol/build/CMakeFiles/WindingControl.dir
