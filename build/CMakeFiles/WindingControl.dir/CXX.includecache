@@ -6,9 +6,9 @@
 
 #IncludeRegexTransform: 
 
-/home/e5a-labor/src/Winding Control/windingcontrol/WindingControl.cpp
-WindingControl.h
 /home/e5a-labor/src/Winding Control/windingcontrol/WindingControl.h
+string
+-
 opencv2/highgui/highgui.hpp
 -
 opencv2/video/video.hpp
@@ -25,23 +25,15 @@ apps/Common/exampleHelper.h
 -
 mvIMPACT_CPP/mvIMPACT_acquire.h
 -
-string
--
-iostream
--
-
-/home/e5a-labor/src/Winding Control/windingcontrol/WindingControl.h
-string
--
-apps/Common/exampleHelper.h
--
-mvIMPACT_CPP/mvIMPACT_acquire.h
--
 
 /home/e5a-labor/src/Winding Control/windingcontrol/WindingControlMain.cpp
 WindingControl.h
 /home/e5a-labor/src/Winding Control/windingcontrol/WindingControl.h
 iostream
+-
+time.h
+/home/e5a-labor/src/Winding Control/windingcontrol/time.h
+sstream
 -
 apps/Common/exampleHelper.h
 -

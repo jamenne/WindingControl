@@ -8,6 +8,8 @@
 //
 #include "WindingControl.h"
 #include <iostream>
+#include "time.h"
+#include <sstream>
 
 //mvIMPACT stuff
 #include <apps/Common/exampleHelper.h>
@@ -17,38 +19,37 @@ using namespace std;
 
 int main()
 {	
-	
+	string input;
+
 	DeviceManager devMgr;
 
 	Device* pDev = OpenCam(devMgr);
-	WriteVideoToFile("Test.avi", pDev);
 
-	//ShowPictureOfCamera(pDev);
+	cout << "Do you want to record the image?" << endl;
+	cin >> input;
 
-    /*Mat whole(Size(0, 0), CV_8UC3);  // container for the 'whole' video frame, CV_8UC3 means we use unsigned char types that are 8 bit long and each pixel has three of these to form the three channels
-	whole=InitializeImage(pDev);
+	if((input == "y") | (input == "Yes") | (input == "yes")){
 
-	char key('a');
-    int wait_ms(10);
+		time_t sec = time(NULL);
 
-    namedWindow("Video Frame", CV_WINDOW_AUTOSIZE);
-    imshow("Video Frame", whole);
+		tm *uhr = localtime(&sec);
 
-   while(key != 27 && key != 'q') {
+		stringstream path;
+		
+		
+		path << "Wickel_" << uhr->tm_year-100 << uhr->tm_mon+1 << uhr->tm_mday << "-" << uhr->tm_hour << uhr->tm_min << uhr->tm_sec << ".avi";
 
-        key = waitKey(wait_ms);
 
-        whole = RequestNewImage(pDev, whole);
 
-        imshow("Video Frame", whole);
+		WriteVideoToFile(path.str(), pDev);
 
-    }
+	}
 
-    // close all windows
-    startWindowThread();  // Must be called to destroy the windows properly
-    destroyAllWindows();  // otherwise the windows will remain openend.*/
-
-    //ProzessFrame();
+	
+	else ShowPictureOfCamera(pDev);
+	
+	//bool stab=true;
+   	//ProzessCapturedFrame("/home/e5a-labor/src/Winding Control/windingcontrol/build/Wickelvideos/Wickel_15101-103829.avi", stab);
 
 	return 0;
 }
