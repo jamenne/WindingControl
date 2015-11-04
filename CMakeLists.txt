@@ -29,8 +29,8 @@ if(Boost_FOUND)
 endif()
 
 # mvIMPACT Acquire SDK
-find_package( mvIMPACT REQUIRED )
-INCLUDE_DIRECTORIES( ${mvIMPACT_INCLUDE_DIRS} )
+#find_package( mvIMPACT REQUIRED )
+#INCLUDE_DIRECTORIES( ${mvIMPACT_INCLUDE_DIRS} )
 #set( LIBRARIES ${LIBRARIES} ${mvIMPACT_LIBRARIES} )
 
 # Find and include OpenCV directories
@@ -58,9 +58,11 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
-add_executable(WindingControl WindingControl.cpp WindingControlMain.cpp)
-target_link_libraries(WindingControl ${mvIMPACT_LIBRARIES} ${OpenCV_LIBS})
+#add_executable(WindingControl WindingControl.cpp WindingControlMain.cpp)
+#target_link_libraries(WindingControl ${mvIMPACT_LIBRARIES} ${OpenCV_LIBS})
 
+add_executable(WindingTest WindingTest.cpp WindingTestMain.cpp)
+target_link_libraries(WindingTest ${OpenCV_LIBS})
 
 #target_link_libraries( WindingControl ${Boost_LIBRARIES})
 #target_link_libraries( WindingControl ${LIBRARIES})
