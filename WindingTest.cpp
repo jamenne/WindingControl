@@ -108,7 +108,6 @@ if (!Out.empty())
 
 }
 
-
 void ProzessCapturedFrame(string VideoName, bool stab, bool ChooseROI){
 
     VideoCapture cap; // open the video file for reading
@@ -133,9 +132,7 @@ void ProzessCapturedFrame(string VideoName, bool stab, bool ChooseROI){
          exit(EXIT_FAILURE);
         }
 
-        //check if the video has reach its last frame.
-        //we add '-1' because we are reading two frames from the video at a time.
-        //if this is not included, we get a memory error!
+        //check if the video has reach its last frame
         while(cap.get(CV_CAP_PROP_POS_FRAMES)<cap.get(CV_CAP_PROP_FRAME_COUNT) && key != 27 && key != 'q'){
 
             bool bSuccess = cap.read(frame); // read a new frame from video
@@ -443,6 +440,229 @@ Point2f getOpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& 
 
     // Averaging approach
     return Point2f(x_diff_mean/n, y_diff_mean/n);
+}
+
+
+void ProzessCapturedFrame2(string VideoName){
+
+
+    VideoCapture cap; // open the video file for reading
+
+    namedWindow("Original Video",CV_WINDOW_NORMAL); //create a window called "Original Video"
+    resizeWindow("Original Video", 800, 600);
+
+    Mat frame, frame_grey;
+
+    char key('a');
+    int wait_ms(10);
+    bool stab = false;
+    bool tracking = true;
+    
+    while(key != 27 && key != 'q'){
+
+        cap.open(VideoName);
+
+        if ( !cap.isOpened() ){  // if not success, exit program
+
+         cout << "Cannot open the video file" << endl;
+         exit(EXIT_FAILURE);
+        }
+
+        //check if the video has reach its last frame
+        while(cap.get(CV_CAP_PROP_POS_FRAMES)<cap.get(CV_CAP_PROP_FRAME_COUNT) && key != 27 && key != 'q'){
+
+            if(waitKey(wait_ms) == 116) // t has been pressed
+            {
+                stab=true;
+                cout << "Stabilization enabled" << endl;
+            }
+
+            else if (waitKey(wait_ms) == 102)
+            {
+                stab=false;
+                cout << "Stabilization disabled" << endl;
+            }
+
+
+            bool bSuccess = cap.read(frame); // read a new frame from video
+            resize( frame, frame, Size(800, 600), 0, 0, INTER_CUBIC) ; //resize the image
+            cvtColor(frame, frame_grey, COLOR_BGR2GRAY);
+            
+            imshow("Original Video", frame_grey); //show the frame in "Original Video" window
+
+            if ( !bSuccess ) //if not success, break loop
+            {
+                cout << "Cannot read the frame from video file" << endl;
+                break;
+            }
+
+            // Video stabilisation
+            if (stab)
+            {
+                //frame.convertTo(frame_grey, CV_8U);
+                //cout << "Mat type: " << frame.type() << endl;
+                StabilizeVideo(frame_grey);
+            }
+
+            if(tracking){
+                
+            }
+
+
+
+
+            key = waitKey(wait_ms);  // Capture Keyboard stroke
+        }
+    }
+
+}
+
+void StabilizeVideo(Mat& cur_frame){
+
+    // frame.convertTo(frame, CV_8U);
+    static Mat prev_frame;
+    // previousFrame.convertTo(previousFrame, CV_8U);
+    Mat stabilizedFrame;
+    // stabilizedFrame.convertTo(stabilizedFrame, CV_8U);
+    
+    if ( !prev_frame.empty() )
+    {
+        /*
+
+        ///// STEP 1: Detect the keypoints ///// 
+
+        // The following detector types are supported:
+        // "FAST" – FastFeatureDetector
+        // "STAR" – StarFeatureDetector
+        // "SIFT" – SIFT (nonfree module)
+        // "SURF" – SURF (nonfree module)
+        // "ORB" – ORB
+        // "BRISK" – BRISK
+        // "MSER" – MSER
+        // "GFTT" – GoodFeaturesToTrackDetector
+        // "HARRIS" – GoodFeaturesToTrackDetector with Harris detector enabled
+        // "Dense" – DenseFeatureDetector
+        // "SimpleBlob" – SimpleBlobDetector
+        Ptr<FeatureDetector> detector = FeatureDetector::create("SURF");
+
+        //cout << endl << "< Extracting keypoints from frame..." << endl;
+        vector<KeyPoint> keypoints1;
+        vector<KeyPoint> keypoints2;
+        
+        detector->detect( frame, keypoints1 );
+        detector->detect( previousFrame, keypoints2 );
+        //cout << keypoints1.size() << " points" << endl << ">" << endl;
+
+        ///// STEP 2: Calculate descriptors (feature vectors)
+
+        // The current implementation supports the following types of a descriptor extractor:
+        // "SIFT" – SIFT
+        // "SURF" – SURF
+        // "BRIEF" – BriefDescriptorExtractor
+        // "BRISK" – BRISK
+        // "ORB" – ORB
+        // "FREAK" – FREAK
+        Ptr<DescriptorExtractor> descriptorExtractor = DescriptorExtractor::create( "SURF" );
+
+        //cout << "< Computing descriptors for keypoints from frame..." << endl;
+        Mat descriptors1;
+        Mat descriptors2;
+        descriptorExtractor->compute( frame, keypoints1, descriptors1 );
+        descriptorExtractor->compute( previousFrame, keypoints2, descriptors2 );
+        //cout << ">" << endl;
+
+        ///// STEP 3: Matching descriptor vectors using certain matcher /////
+
+        // Descriptor matcher type. Now the following matcher types are supported:
+        // BruteForce (it uses L2 )
+        // BruteForce-L1
+        // BruteForce-Hamming
+        // BruteForce-Hamming(2)
+        // FlannBased
+        Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "FlannBased" );
+
+        std::vector< DMatch > matches;
+        descriptorMatcher->match(descriptors1, descriptors2, matches);
+        //cout << "matches.size():\t" << matches.size() << endl;
+
+        //-- Quick calculation of max and min distances between keypoints
+        double max_dist = 0; 
+        double min_dist = 100;
+
+        for( int i = 0; i < descriptors1.rows; i++ )
+        { 
+            double dist = matches[i].distance;
+            if( dist < min_dist ) min_dist = dist;
+            if( dist > max_dist ) max_dist = dist;
+
+        }
+
+        //-- Draw only "good" matches (i.e. whose distance is less than 2*min_dist,
+        //-- or a small arbitary value ( 0.02 ) in the event that min_dist is very
+        //-- small)
+        //-- PS.- radiusMatch can also be used here.
+        std::vector< DMatch > good_matches;
+
+        for( int i = 0; i < descriptors1.rows; i++ )
+        { 
+            if( matches[i].distance <= 4*min_dist )
+            { 
+                good_matches.push_back( matches[i]); 
+            }
+        }
+
+        //cout << "good_matches:\t" << good_matches.size() << endl;
+
+        //-- Draw only "good" matches
+        //Mat img_matches;
+
+        drawMatches( frame, keypoints1, previousFrame, keypoints2,
+                   good_matches, img_matches, Scalar::all(-1), Scalar::all(-1),
+                   vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+        //-- Show detected matches
+        //imshow( "Good Matches", img_matches );
+
+       //-- Localize the object
+        std::vector<Point2f> obj;
+        std::vector<Point2f> scene;
+
+        for( uint i = 0; i < good_matches.size(); i++ )
+        {
+            //-- Get the keypoints from the good matches
+            obj.push_back( keypoints1[ good_matches[i].queryIdx ].pt );
+            scene.push_back( keypoints2[ good_matches[i].trainIdx ].pt );
+        }
+
+        Mat H = findHomography( obj, scene, CV_RANSAC );
+
+        cout << "Mat type: " << frame.type() << endl;
+        cout << "Mat type: " << previousFrame.type() << endl;
+        cout << "Mat type: " << stabilizedFrame.type() << endl;
+        cout << "Mat type: " << H.type() << endl;
+        cout << H.rows << " " << H.cols << endl;
+
+        //-- Get the corners from the image_1 ( the object to be "detected" )
+        std::vector<Point2f> obj_corners(4);
+        obj_corners[0] = cvPoint(0,0); 
+        obj_corners[1] = cvPoint( frame.cols, 0 );
+        obj_corners[2] = cvPoint( frame.cols, frame.rows ); 
+        obj_corners[3] = cvPoint( 0, frame.rows );
+        std::vector<Point2f> scene_corners(4);
+
+        //perspectiveTransform( obj_corners, scene_corners, H);
+
+        warpAffine(frame, stabilizedFrame, H, frame.size());*/
+
+
+        prev_frame = cur_frame;
+
+        //imshow("Stabilized Video", stabilizedFrame);
+
+    }
+
+    else prev_frame = cur_frame;
+
 }
 
 

@@ -15,10 +15,8 @@ using namespace std;
 
 int main()
 {	
-	
-	bool stab=true;
-	bool ChooseROI=true;
-   	ProzessCapturedFrame("/Users/janine/WindingControl/Wickelvideos/Wickel_15101-103829.avi", stab, ChooseROI);
+
+   	ProzessCapturedFrame2("/Users/janine/WindingControl/Wickelvideos/Wickel_15101-103829.avi");
 
 	//TestCallBack();
 

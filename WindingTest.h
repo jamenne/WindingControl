@@ -40,5 +40,7 @@ Point2f getOpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& 
 void CallBackFunc(int event, int x, int y, int flags, void* userdata, vector<Point> Points);
 void TestCallBack();
 
+void ProzessCapturedFrame2(string VideoName);
+void StabilizeVideo(Mat& frame);
 
 #endif /* defined(____WindingTest__) */
