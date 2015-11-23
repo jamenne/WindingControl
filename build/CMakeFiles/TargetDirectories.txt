@@ -1,1 +1,0 @@
-/Users/jamueller/Wickelkontrolle/build/CMakeFiles/OpenCVCam.dir

@@ -34,7 +34,7 @@ endif()
 #set( LIBRARIES ${LIBRARIES} ${mvIMPACT_LIBRARIES} )
 
 # Find and include OpenCV directories
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 2.4.10 REQUIRED)
 if(${OpenCV_FOUND})
   MESSAGE(STATUS "OpenCV version: " ${OpenCV_VERSION})
   MESSAGE(STATUS "OpenCV libs: " ${OpenCV_LIBS})
@@ -61,11 +61,8 @@ ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 #add_executable(WindingControl WindingControl.cpp WindingControlMain.cpp)
 #target_link_libraries(WindingControl ${mvIMPACT_LIBRARIES} ${OpenCV_LIBS})
 
-#add_executable(WindingTest WindingTest.cpp WindingTestMain.cpp)
-#target_link_libraries(WindingTest ${OpenCV_LIBS})
-
-add_executable(WindingTracking WindingTracking.cpp WindingTrackingMain.cpp)
-target_link_libraries(WindingTracking ${OpenCV_LIBS})
+add_executable(videostab stab.cpp)
+target_link_libraries(videostab ${OpenCV_LIBS})
 
 #target_link_libraries( WindingControl ${Boost_LIBRARIES})
 #target_link_libraries( WindingControl ${LIBRARIES})
