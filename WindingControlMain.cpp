@@ -25,10 +25,10 @@ int main()
 
 	Device* pDev = OpenCam(devMgr);
 
-	cout << "Do you want to record the image?" << endl;
+	/*cout << "Do you want to record the image?" << endl;
 	cin >> input;
 
-	if((input == "y") | (input == "Yes") | (input == "yes")){
+	if((input == "y") | (input == "Yes") | (input == "yes") | (input == "Y")){
 
 		time_t sec = time(NULL);
 
@@ -37,7 +37,7 @@ int main()
 		stringstream path;
 		
 		
-		path << "Wickel_" << uhr->tm_year-100 << uhr->tm_mon+1 << uhr->tm_mday << "-" << uhr->tm_hour << uhr->tm_min << uhr->tm_sec << ".avi";
+		path << "/local/Wickel_" << uhr->tm_year-100 << uhr->tm_mon+1 << uhr->tm_mday << "-" << uhr->tm_hour << uhr->tm_min << uhr->tm_sec << ".avi";
 
 
 
@@ -46,10 +46,23 @@ int main()
 	}
 
 	
-	else ShowPictureOfCamera(pDev);
+	else ShowPictureOfCamera(pDev);*/
 	
-	//bool stab=true;
-   	//ProzessCapturedFrame("/home/e5a-labor/src/Winding Control/windingcontrol/build/Wickelvideos/Wickel_15101-103829.avi", stab);
+	bool On=false;
+
+	cout << "Do you want to switch the Output on?" << endl;
+	cin >> input;
+
+	if (input == "y")
+	{
+		On = true;
+	}
+
+	int number = 0;
+	cout << "Which one do you want to switch on?" << endl;
+	cin >> number;
+
+	SetOutput(pDev, number, On );
 
 	return 0;
 }
