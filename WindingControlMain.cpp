@@ -47,22 +47,6 @@ int main()
 
 	
 	else ShowPictureOfCamera(pDev);*/
-	
-	bool On=false;
-
-	cout << "Do you want to switch the Output on?" << endl;
-	cin >> input;
-
-	if (input == "y")
-	{
-		On = true;
-	}
-
-	int number = 0;
-	cout << "Which one do you want to switch on?" << endl;
-	cin >> number;
-
-	SetOutput(pDev, number, On );
 
 	return 0;
 }

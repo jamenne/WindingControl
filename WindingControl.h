@@ -31,9 +31,13 @@ void CaptureVideoFromFile(string);
 void WriteVideoToFile(string, Device*);
 Device* OpenCam(DeviceManager &devMgr);
 void ShowPictureOfCamera(Device* pDev);
-void ShowPictureOfCamera2(Device* pDev);
 Mat ImageRequestSingle(Device* pDev, Mat &frame);
 Mat InitializeImage(Device* pDev);
+
+// sets an chosen Output to an On or Off state
+void SetOutput( Device* pDev, int Output, bool On );
+
+// OBSOLETE //
 void ProzessFrame(Device* pDev, bool stab);
 void ProzessCapturedFrame(string VideoName, bool stab);
 void stabilizeFrame(Mat& whole, Mat& stabframe, string method);
@@ -47,8 +51,5 @@ vector<KeyPoint> findFeatures(Mat& img, string method, vector<Point2f>& feat);
 void drawArrows(Mat& drawframe, const vector<Point2f>& feat_1, const vector<Point2f>& feat_2);
 void drawPoints(Mat& drawframe, const vector<Point2f>& feat, Scalar s);
 Point2f getOpticalFlow(const vector<Point2f>& feat_prev, const vector<Point2f>& feat_curr);
-
-// sets an chosen Output to an On or Off state
-void SetOutput( Device* pDev, int Output, bool On );
 
 #endif /* defined(____WindingControl__) */
