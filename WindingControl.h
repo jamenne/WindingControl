@@ -31,11 +31,16 @@ void CaptureVideoFromFile(string);
 void WriteVideoToFile(string, Device*);
 Device* OpenCam(DeviceManager &devMgr);
 void ShowPictureOfCamera(Device* pDev);
-Mat ImageRequestSingle(Device* pDev, Mat &frame);
+Mat ImageRequestSingle(Device* pDev);
 Mat InitializeImage(Device* pDev);
+void SaveSingleImageToFile(Device* pDev, string path);
 
 // sets an chosen Output to an On or Off state
 void SetOutput( Device* pDev, int Output, bool On );
+
+
+
+
 
 // OBSOLETE //
 void ProzessFrame(Device* pDev, bool stab);

@@ -141,7 +141,7 @@ Mat InitializeImage(Device* pDev){
 }
 
 // Asks for a single image - working!
-Mat ImageRequestSingle(Device* pDev, Mat &frame){ // Don't use for an continuous capture -> too slow
+Mat ImageRequestSingle(Device* pDev){ // Don't use for an continuous capture -> too slow
 
     FunctionInterface fi(pDev);
 
@@ -179,9 +179,10 @@ Mat ImageRequestSingle(Device* pDev, Mat &frame){ // Don't use for an continuous
         exit(EXIT_FAILURE);
     }
 
-    //cout << "Image captured( " << pRequest->imagePixelFormat.readS() << " " << pRequest->imageWidth.read() << "x" << pRequest->imageHeight.read() << " )" << endl;
+    cout << "Image captured( " << pRequest->imagePixelFormat.readS() << " " << pRequest->imageWidth.read() << "x" << pRequest->imageHeight.read() << " )" << endl;
     
     // import frame into OpenCV container
+    Mat frame(1200,1600,CV_8U);
     frame = Mat(frame.size(), frame.type(), pRequest->imageData.read());
 
     return frame;
@@ -531,7 +532,7 @@ void SetOutput( Device* pDev, int Output, bool On ){
 
 
 
-void ProzessFrame(Device* pDev, bool stab){
+void ProzessFrame(Device* pDev){
 
     int CAM_HEIGHT, CAM_WIDTH;
 
