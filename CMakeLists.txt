@@ -12,12 +12,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/lib")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 
-# ROOT, a library for HEP data analysis (contains RooFit)
-find_package(ROOT REQUIRED)
-include_directories(${ROOT_INCLUDE_DIR})
-set(LIBRARIES ${LIBRARIES} ${ROOT_LIBRARIES})
-#set(LIBRARIES ${LIBRARIES} ${ROOFIT_LIBRARIES})
-
 # BOOST, provides free peer-reviewed portable C++ source libraies
 set(Boost_USE_STATIC_LIBS OFF) 
 set(Boost_USE_MULTITHREADED ON)  
@@ -57,5 +51,7 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
-add_executable(WindingControl WindingControl.cpp WindingControlMain.cpp)
-target_link_libraries(WindingControl ${mvIMPACT_LIBRARIES} ${OpenCV_LIBS})
+add_library(WindingControl WindingControl.cpp)
+
+add_executable(WindingControlMain WindingControlMain.cpp)
+target_link_libraries(WindingControlMain WindingControl ${mvIMPACT_LIBRARIES} ${OpenCV_LIBS})
