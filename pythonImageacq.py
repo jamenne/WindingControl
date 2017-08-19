@@ -16,6 +16,7 @@ import numpy as np
 import mv
 import keras
 import sys
+import os
 from PIL import ImageQt
 import scipy
 
@@ -24,7 +25,7 @@ from keras.models import load_model
 import scipy.misc #library for resizing buffer image
 
 
-model = load_model('GreyscaleFull_3layers.h5') #loading trained NN
+model = load_model('811_169_167_32_32_int.h5') #loading trained NN
 
 
 class AcquisitionThread(Thread):
@@ -34,6 +35,10 @@ class AcquisitionThread(Thread):
         self.dev = device
         self.queue = queue
         self.wants_abort = False
+        #self.hist = np.empty([1,2])
+
+        
+
 
     
     def acquire_image(self):
@@ -59,14 +64,19 @@ class AcquisitionThread(Thread):
             buf = image_result.get_buffer()
             imgdata = np.array(buf, copy = False)
             AcquisitionThread.image = np.array(imgdata)
-            img = scipy.misc.imresize(imgdata, (150, 200)) #resizing image to parse through NN
-            img = np.reshape(img,[1,150,200,1]) #reshaping data ato parse into keras prediction
+            img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image to parse through NN
+            img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
             ClassProb = model.predict_proba(img, verbose=0) #find prediction probability
-            Class = model.predict_classes(img, verbose=0) #classifies image
             print(ClassProb)
+            
+            with open("hist.dat", "a") as myfile:
+                    myfile.write(ClassProb)
+            #self.hist = np.append(self.hist, ClassProb, axis=0)
             #Output to show if image is positive/negative
-            if Class[0] == 0:
+            #np.savetxt('hist.dat', self.hist, fmt='%.18e', delimiter=' ', newline='\n')
+            if ClassProb[0,0] < 0.5:
                 print('NEGATIVE')
+                #print("\a")
             else:
                 print('POSITIVE')
                 
@@ -153,10 +163,11 @@ acquisition_thread.start()
 run()
 while True:
     try:
+        
         img = queue.get(block=True, timeout = 1)
         Gui.show()
-        print("consumed image #", img['N'])
-    except Empty:
+        char = sys.stdin.read(1)
+    except char:
         print("got no image")
       
 
