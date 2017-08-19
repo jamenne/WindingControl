@@ -25,7 +25,7 @@ from keras.models import load_model
 import scipy.misc #library for resizing buffer image
 
 
-model = load_model('811_169_167_32_32_int.h5') #loading trained NN
+model = load_model('../TrainedModels/Good/811_1611_1611_32_32_int.h5') #loading trained NN
 
 
 class AcquisitionThread(Thread):
@@ -69,8 +69,8 @@ class AcquisitionThread(Thread):
             ClassProb = model.predict_proba(img, verbose=0) #find prediction probability
             print(ClassProb)
             
-            with open("hist.dat", "a") as myfile:
-                    myfile.write(ClassProb)
+            #with open("hist.dat", "a") as myfile:
+            #        np.savetxt(myfile, ClassProb, fmt='%.4f')
             #self.hist = np.append(self.hist, ClassProb, axis=0)
             #Output to show if image is positive/negative
             #np.savetxt('hist.dat', self.hist, fmt='%.18e', delimiter=' ', newline='\n')
