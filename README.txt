@@ -22,4 +22,5 @@ In Directory run the command:
 * 'Load' will load a selected images and display it                     
 * 'Save' will save the displayed image to hard drive        
 * 'Quit' determines the application
-* Classification of incoming images coming soon...                                   
+* Classification of incoming images coming soon..
+* Camera setting handling coming soon---.                                   
