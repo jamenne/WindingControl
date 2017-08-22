@@ -47,6 +47,7 @@ class AcquisitionThread(Thread):
         self.dev = device
         self.queue = queue
         self.wants_abort = False
+        self.running = False
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -166,6 +167,7 @@ class App(QWidget):
         # This method will raise a RuntimeError if called more than once on the same thread object.
         self.thread.wants_abort = False
         self.thread.start()
+        self.thread.running = True
 
         timer = QTimer(self)
         timer.timeout.connect(self.open)
@@ -232,7 +234,8 @@ class App(QWidget):
 
 
     def quit(self):
-        self.stop_aquisition()
+        if self.thread.running:
+            self.stop_aquisition()
         self.close()
 
 
