@@ -1,13 +1,18 @@
-#                                           #
-#                                           #  
-#       Created by Janine Müller            #
-#                                           #
-#                                           #
-#       21.08.2017 at TU Dortmund           #
-#                                           #
-#                                           #
-#                                           #
-# Loads an selected image into application   #
+#########                                                                           #########
+#########                                                                           #########
+#########                   Created by Janine Müller                                #########
+#########                                                                           #########
+#########                                                                           #########
+#########                  21.08.2017 at TU Dortmund                                #########
+#########                                                                           #########
+#########                                                                           #########
+#########                                                                           #########
+#########                                                                           #########
+#########       'Run' displays a camera feed with the mvBlueFox3 using PyQt         #########
+#########       Loads a selected images with the 'Load' button                      #########
+#########       Saves a displayed image with the 'Save' button to hard drive        #########
+#########       'Quit' determines the application                                   #########
+
 
 import sys
 import os
@@ -244,7 +249,7 @@ class App(QWidget):
 def main():
 
     #find and open device
-    serials = mv.List(0).Devices.children #hack to get list of available device names
+    serials = mv.List(0).Devices.children
     serial = serials[0]
     device = mv.dmg.get_device(serial)
     print('Using device:', serial)
