@@ -1,4 +1,4 @@
-#########                                                                           #########
+#############################################################################################
 #########                                                                           #########
 #########                   Created by Janine Müller                                #########
 #########                                                                           #########
@@ -12,6 +12,8 @@
 #########       Loads a selected images with the 'Load' button                      #########
 #########       Saves a displayed image with the 'Save' button to hard drive        #########
 #########       'Quit' determines the application                                   #########
+#########                                                                           #########
+#############################################################################################
 
 
 import sys
@@ -21,7 +23,7 @@ from threading import Thread
 from six.moves.queue import Queue, Empty, Full
 
 # Qt stuff
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 
@@ -122,9 +124,9 @@ class App(QWidget):
         self.thread = ac_thread
         self.save_im = False
 
-        self.initUI()
+        self.initGUI()
  
-    def initUI(self):
+    def initGUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
@@ -147,6 +149,13 @@ class App(QWidget):
         # Image viewing region
         self.lbl = QLabel(self)
 
+        # Slider for camera settings
+        grid = QGridLayout()
+        grid.addWidget(self.create_slider("Test", 10, 1e6, 1e3, 100, 100), 0,0)
+        grid.addWidget(self.create_slider("Test1", 10, 1e6, 1e3, 100, 100), 0,1)
+        grid.addWidget(self.create_slider("Test2", 10, 1e6, 1e3, 100, 100), 1,0)
+        grid.addWidget(self.create_slider("Test3", 10, 1e6, 1e3, 100, 100), 1,1)
+
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
         layout_button.addWidget(self.load_button)
@@ -158,10 +167,30 @@ class App(QWidget):
         # A Vertical layout to include the button layout and then the image
         layout = QVBoxLayout()
         layout.addLayout(layout_button)
+        layout.addLayout(grid)
         layout.addWidget(self.lbl)
 
         self.setLayout(layout)
         self.show()
+
+    def create_slider(self, label, minV, maxV, value, interval, step):
+        groupBox = QGroupBox(label)
+
+        slider = QSlider(Qt.Horizontal)
+        slider.setMinimum(minV)
+        slider.setMaximum(maxV)
+        slider.setValue(value)
+        slider.setTickPosition(QSlider.TicksBelow)
+        slider.setTickInterval(interval)
+        slider.setSingleStep(step)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(slider)
+        vbox.addStretch(1)
+
+        groupBox.setLayout(vbox)
+
+        return groupBox
 
 
     @pyqtSlot()
