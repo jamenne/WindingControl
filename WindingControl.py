@@ -30,6 +30,9 @@ import mv as mv
 
 from PIL import ImageQt
 
+from datetime import datetime
+
+
 #model = load_model('../TrainedModels/Good/811_1611_1611_32_32_int.h5') #loading trained NN
 
 
@@ -111,6 +114,7 @@ class App(QWidget):
         self.width = 640
         self.height = 480
         self.thread = ac_thread
+        self.save_im = False
 
         self.initUI()
  
@@ -122,13 +126,13 @@ class App(QWidget):
         self.load_button = QPushButton("Load image")
         self.load_button.clicked.connect(self.load_image_but)
 
+        # Button that allows loading of images
+        self.save_button = QPushButton("Save image")
+        self.save_button.clicked.connect(self.save_image)
+
         # Button that starts image aquisition
         self.run_button = QPushButton("Run")
         self.run_button.clicked.connect(self.run_aquisition)
-
-        # Button that stops image aquisition
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.clicked.connect(self.stop_aquisition)
 
         # Button that quits the app
         self.quit_button = QPushButton("Quit")
@@ -140,8 +144,8 @@ class App(QWidget):
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
         layout_button.addWidget(self.load_button)
+        layout_button.addWidget(self.save_button)
         layout_button.addWidget(self.run_button)
-        layout_button.addWidget(self.stop_button)
         layout_button.addWidget(self.quit_button)
         layout_button.addStretch()
 
@@ -160,6 +164,7 @@ class App(QWidget):
         # It must be called at most once per thread object. 
         # It arranges for the object’s run() method to be invoked in a separate thread of control.
         # This method will raise a RuntimeError if called more than once on the same thread object.
+        self.thread.wants_abort = False
         self.thread.start()
 
         timer = QTimer(self)
@@ -169,7 +174,13 @@ class App(QWidget):
     def open(self):
         try:
             img = self.thread.queue.get(block=True, timeout = 1)
-            q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))              
+            q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
+
+            if self.save_im:
+                scipy.misc.toimage(img['img']).save('/home/windingcontrol/WindingImages/IMG_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + '.jpg')
+                print('Successfully saved image to file')
+                self.save_im = False
+
             
             self.lbl.setPixmap(q)
             self.lbl.adjustSize()
@@ -178,21 +189,8 @@ class App(QWidget):
         except Empty:
             print("got no image")
 
-    def stop_aquisition(self):
-         #wait until acquisition thread has stopped
-        self.thread.stop()
-
-        # Wait until the thread terminates. This blocks the calling thread until the thread whose join() method is called terminates 
-        # – either normally or through an unhandled exception – or until the optional timeout occurs.
-        # When the timeout argument is present and not None, it should be a floating point number 
-        # specifying a timeout for the operation in seconds (or fractions thereof). 
-        # As join() always returns None, you must call is_alive() after join() to decide whether a timeout happened 
-        # – if the thread is still alive, the join() call timed out.
-        # When the timeout argument is not present or None, the operation will block until the thread terminates.
-        # A thread can be join()ed many times.
-        # join() raises a RuntimeError if an attempt is made to join the current thread as that would cause a deadlock. 
-        # It is also an error to join() a thread before it has been started and attempts to do so raise the same exception.
-        self.thread.join()
+    def save_image(self):
+        self.save_im = True
 
 
     def load_image_but(self):
@@ -214,6 +212,22 @@ class App(QWidget):
         pixmap = QPixmap(self.fname)
         pixmap = pixmap.scaled(500, 500, Qt.KeepAspectRatio)
         self.lbl.setPixmap(pixmap)
+
+    def stop_aquisition(self):
+        #wait until acquisition thread has stopped
+        self.thread.stop()
+
+        # Wait until the thread terminates. This blocks the calling thread until the thread whose join() method is called terminates 
+        # – either normally or through an unhandled exception – or until the optional timeout occurs.
+        # When the timeout argument is present and not None, it should be a floating point number 
+        # specifying a timeout for the operation in seconds (or fractions thereof). 
+        # As join() always returns None, you must call is_alive() after join() to decide whether a timeout happened 
+        # – if the thread is still alive, the join() call timed out.
+        # When the timeout argument is not present or None, the operation will block until the thread terminates.
+        # A thread can be join()ed many times.
+        # join() raises a RuntimeError if an attempt is made to join the current thread as that would cause a deadlock. 
+        # It is also an error to join() a thread before it has been started and attempts to do so raise the same exception.
+        self.thread.join()
 
 
     def quit(self):
