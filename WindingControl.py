@@ -177,8 +177,9 @@ class App(QWidget):
             q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
 
             if self.save_im:
-                scipy.misc.toimage(img['img']).save('/home/windingcontrol/WindingImages/IMG_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + '.jpg')
-                print('Successfully saved image to file')
+                path = '/home/windingcontrol/WindingImages/IMG_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + '.jpg'
+                scipy.misc.toimage(img['img']).save(path)
+                print('Successfully saved image to file: {:}'.format(path))
                 self.save_im = False
 
             
