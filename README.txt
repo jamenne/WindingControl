@@ -21,4 +21,5 @@ In Directory run the command:
 * 'Run' displays a camera feed with the mvBlueFox3 using PyQt         
 * 'Load' will load a selected images and display it                     
 * 'Save' will save the displayed image to hard drive        
-* 'Quit' determines the application                                   
+* 'Quit' determines the application
+* Classification of incoming images coming soon...                                   
