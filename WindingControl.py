@@ -39,6 +39,8 @@ from PIL import ImageQt
 
 from datetime import datetime
 
+from functools import partial
+
 
 #model = load_model('../TrainedModels/Good/811_1611_1611_32_32_int.h5') #loading trained NN
 
@@ -111,6 +113,7 @@ class AcquisitionThread(Thread):
     def stop(self):
         self.wants_abort = True
 
+
 ##################################################  QT DISPLAY ##################################################
 class App(QWidget):
  
@@ -134,11 +137,16 @@ class App(QWidget):
         self.lbl = QLabel(self)
 
         # Slider for camera settings on a grid layout (4x4)
+        self.exposure = self.create_slider("Exposure", 10, 1e6, 200000)
+        self.gain = self.create_slider("Gain", 0, 18, 15)
+        self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
+        self.framerate = self.create_slider("Framerate", 1, 12, 8)
+
         grid = QGridLayout()
-        grid.addWidget(self.create_slider("Exposure", 10, 1e6, 1e5, 1e5, 1e3), 0,0)
-        grid.addWidget(self.create_slider("Gain", 0, 18, 10, 3, 1), 0,1)
-        grid.addWidget(self.create_slider("Blacklevel", -100, 100, 0, 20, 1), 1,0)
-        grid.addWidget(self.create_slider("Framerate", 1, 12, 8, 1, 1), 1,1)
+        grid.addWidget(self.exposure, 0,0)
+        grid.addWidget(self.gain, 0,1)
+        grid.addWidget(self.blacklevel, 1,0)
+        grid.addWidget(self.framerate, 1,1)
 
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
@@ -157,29 +165,30 @@ class App(QWidget):
         self.setLayout(layout)
         self.show()
 
-    def create_slider(self, label, minV, maxV, value, interval, step):
+    def create_slider(self, label, minV, maxV, value):
         groupBox = QGroupBox(label)
 
         slider = QSlider(Qt.Horizontal)
         slider.setMinimum(minV)
         slider.setMaximum(maxV)
         slider.setValue(value)
-        slider.setFocusPolicy(Qt.StrongFocus)
         slider.setTickPosition(QSlider.TicksBelow)
-        slider.setTickInterval(interval)
-        slider.setSingleStep(step)
+        slider.setTickInterval( (maxV-minV)/10 )
+        slider.setFocusPolicy(Qt.NoFocus)
+
+        slider.valueChanged.connect(partial (self.slider_val_changed,  label) )
 
         vbox = QVBoxLayout()
         vbox.addWidget(slider)
-        #vbox.addStretch(1)
+        vbox.addStretch(2)
 
+        #vbox.setGeometry(10, 10, 200, 30)
         groupBox.setLayout(vbox)
 
         return groupBox
 
     def create_button(self, label, func):
 
-        # Button that allows loading of images
         button = QPushButton(label)
         button.clicked.connect(func)
 
@@ -188,12 +197,34 @@ class App(QWidget):
 
 
     @pyqtSlot()
+    def slider_val_changed(self, label):
+
+        if label == "Exposure":
+            val = self.exposure.findChild(QSlider).value()
+            self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.ExposureTime=val
+            print('Changed Exposure Time to {}'.format(val))
+
+        if label == "Gain":
+            val = self.gain.findChild(QSlider).value()
+            self.thread.dev.Setting.Base.Camera.GenICam.AnalogControl.Gain=val
+            print('Changed ' + label + ' to {}'.format(val))
+
+        if label == "Blacklevel":
+            val = self.blacklevel.findChild(QSlider).value()
+            self.thread.dev.Setting.Base.Camera.GenICam.AnalogControl.BlackLevel=val
+            print('Changed ' + label + ' to {}'.format(val))
+
+        if label == "Framerate":
+            val = self.framerate.findChild(QSlider).value() 
+            print('Changed ' + label + ' to {}'.format(val))
+
+
     def run_aquisition(self):
         # Start the thread’s activity.
         # It must be called at most once per thread object. 
         # It arranges for the object’s run() method to be invoked in a separate thread of control.
         # This method will raise a RuntimeError if called more than once on the same thread object.
-        thread.wants_abort = False
+        self.thread.wants_abort = False
         self.thread.start()
         self.thread.running = True
 
