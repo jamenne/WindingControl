@@ -130,38 +130,22 @@ class App(QWidget):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        # Button that allows loading of images
-        self.load_button = QPushButton("Load image")
-        self.load_button.clicked.connect(self.load_image_but)
-
-        # Button that allows loading of images
-        self.save_button = QPushButton("Save image")
-        self.save_button.clicked.connect(self.save_image)
-
-        # Button that starts image aquisition
-        self.run_button = QPushButton("Run")
-        self.run_button.clicked.connect(self.run_aquisition)
-
-        # Button that quits the app
-        self.quit_button = QPushButton("Quit")
-        self.quit_button.clicked.connect(self.quit)
-
         # Image viewing region
         self.lbl = QLabel(self)
 
-        # Slider for camera settings
+        # Slider for camera settings on a grid layout (4x4)
         grid = QGridLayout()
-        grid.addWidget(self.create_slider("Test", 10, 1e6, 1e3, 100, 100), 0,0)
-        grid.addWidget(self.create_slider("Test1", 10, 1e6, 1e3, 100, 100), 0,1)
-        grid.addWidget(self.create_slider("Test2", 10, 1e6, 1e3, 100, 100), 1,0)
-        grid.addWidget(self.create_slider("Test3", 10, 1e6, 1e3, 100, 100), 1,1)
+        grid.addWidget(self.create_slider("Exposure", 10, 1e6, 1e5, 1e5, 1e3), 0,0)
+        grid.addWidget(self.create_slider("Gain", 0, 18, 10, 3, 1), 0,1)
+        grid.addWidget(self.create_slider("Blacklevel", -100, 100, 0, 20, 1), 1,0)
+        grid.addWidget(self.create_slider("Framerate", 1, 12, 8, 1, 1), 1,1)
 
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
-        layout_button.addWidget(self.load_button)
-        layout_button.addWidget(self.save_button)
-        layout_button.addWidget(self.run_button)
-        layout_button.addWidget(self.quit_button)
+        layout_button.addWidget(self.create_button("Load Image", self.load_image_but))
+        layout_button.addWidget(self.create_button("Save Image", self.save_image))
+        layout_button.addWidget(self.create_button("Run", self.run_aquisition))
+        layout_button.addWidget(self.create_button("Quit", self.quit))
         layout_button.addStretch()
 
         # A Vertical layout to include the button layout and then the image
@@ -180,17 +164,27 @@ class App(QWidget):
         slider.setMinimum(minV)
         slider.setMaximum(maxV)
         slider.setValue(value)
+        slider.setFocusPolicy(Qt.StrongFocus)
         slider.setTickPosition(QSlider.TicksBelow)
         slider.setTickInterval(interval)
         slider.setSingleStep(step)
 
         vbox = QVBoxLayout()
         vbox.addWidget(slider)
-        vbox.addStretch(1)
+        #vbox.addStretch(1)
 
         groupBox.setLayout(vbox)
 
         return groupBox
+
+    def create_button(self, label, func):
+
+        # Button that allows loading of images
+        button = QPushButton(label)
+        button.clicked.connect(func)
+
+        return button
+
 
 
     @pyqtSlot()
@@ -199,7 +193,7 @@ class App(QWidget):
         # It must be called at most once per thread object. 
         # It arranges for the object’s run() method to be invoked in a separate thread of control.
         # This method will raise a RuntimeError if called more than once on the same thread object.
-        self.thread.wants_abort = False
+        thread.wants_abort = False
         self.thread.start()
         self.thread.running = True
 
