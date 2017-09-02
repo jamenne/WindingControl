@@ -42,7 +42,7 @@ from datetime import datetime
 from functools import partial
 
 
-#model = load_model('../TrainedModels/Good/811_1611_1611_32_32_int.h5') #loading trained NN
+model = load_model('../TrainedModels/813_1611_169_32_32_int.h5') #loading trained NN
 
 
 ##################################################  Image Aquisition ##################################################
