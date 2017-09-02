@@ -23,7 +23,7 @@ from threading import Thread
 from six.moves.queue import Queue, Empty, Full
 
 # Qt stuff
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 
@@ -135,10 +135,13 @@ class App(QWidget):
 
         # Image viewing region
         self.lbl = QLabel(self)
+        self.lbl.setStyleSheet("border: 5px solid green; background-color: white; inset grey")
+        self.lbl.setFrameShape(QFrame.StyledPanel)
+        self.lbl.setFrameShadow(QFrame.Sunken)
 
         # Slider for camera settings on a grid layout (4x4)
-        self.exposure = self.create_slider("Exposure", 10, 1e6, 200000)
-        self.gain = self.create_slider("Gain", 0, 18, 15)
+        self.exposure = self.create_slider("Exposure", 10, 1e6, 130000)
+        self.gain = self.create_slider("Gain", 0, 18, 1)
         self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
         self.framerate = self.create_slider("Framerate", 1, 12, 8)
 
