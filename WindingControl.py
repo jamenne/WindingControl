@@ -295,7 +295,7 @@ class App(QWidget):
     def load_kerasmodel(self):
 
         self.thread.model = load_model(self.fname) #loading trained NN
-
+        print('Load selected model')
 
 
     def load_image_but(self):
