@@ -42,7 +42,7 @@ from datetime import datetime
 from functools import partial
 
 
-model = load_model('../TrainedModels/813_1611_169_32_32_int.h5') #loading trained NN
+model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/813_1611_169_32_32.h5') #loading trained NN
 
 
 ##################################################  Image Aquisition ##################################################
@@ -57,6 +57,7 @@ class AcquisitionThread(Thread):
         self.queue = queue
         self.wants_abort = False
         self.running = False
+        self.classification = False
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -79,6 +80,22 @@ class AcquisitionThread(Thread):
         if image_result is not None:
             buf = image_result.get_buffer()
             imgdata = np.array(buf, copy = False)
+
+            ### Classification of image
+
+            if self.classification == True:
+                img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image to parse through NN
+                img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
+                ClassProb = model.predict_proba(img, verbose=0) #find prediction probability
+                print(ClassProb)
+                
+                if ClassProb[0,0] < 0.5:
+                    print('NEGATIVE')
+                    #print("\a")
+                else:
+                    print('POSITIVE')
+
+            ### End of Classification
             
             info=image_result.info
             timestamp = info['timeStamp_us']
@@ -156,6 +173,8 @@ class App(QWidget):
         layout_button.addWidget(self.create_button("Load Image", self.load_image_but))
         layout_button.addWidget(self.create_button("Save Image", self.save_image))
         layout_button.addWidget(self.create_button("Run", self.run_aquisition))
+        layout_button.addWidget(self.create_button("Start", self.run_classification))
+        layout_button.addWidget(self.create_button("Stop", self.stop_classification))
         layout_button.addWidget(self.create_button("Quit", self.quit))
         layout_button.addStretch()
 
@@ -234,6 +253,14 @@ class App(QWidget):
         timer = QTimer(self)
         timer.timeout.connect(self.open)
         timer.start(20) #30 Hz
+
+    def run_classification(self):
+        print('Start Classification')
+        self.thread.classification = True
+
+    def stop_classification(self):
+        print('Stop Classification')
+        self.thread.classification = False
 
     def open(self):
         try:
