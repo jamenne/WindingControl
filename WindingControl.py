@@ -42,9 +42,6 @@ from datetime import datetime
 from functools import partial
 
 
-model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/813_1611_169_32_32.h5') #loading trained NN
-
-
 ##################################################  Image Aquisition ##################################################
 
 # Class to aquire images from camera
@@ -86,7 +83,7 @@ class AcquisitionThread(Thread):
             if self.classification == True:
                 img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image to parse through NN
                 img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
-                ClassProb = model.predict_proba(img, verbose=0) #find prediction probability
+                ClassProb = self.model.predict_proba(img, verbose=0) #find prediction probability
                 print(ClassProb)
                 
                 if ClassProb[0,0] < 0.5:
@@ -170,7 +167,7 @@ class App(QWidget):
 
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
-        layout_button.addWidget(self.create_button("Load Image", self.load_image_but))
+        layout_button.addWidget(self.create_button("Load Model", self.load_kerasmodel_but))
         layout_button.addWidget(self.create_button("Save Image", self.save_image))
         layout_button.addWidget(self.create_button("Run", self.run_aquisition))
         layout_button.addWidget(self.create_button("Start", self.run_classification))
@@ -283,6 +280,22 @@ class App(QWidget):
 
     def save_image(self):
         self.save_im = True
+
+    def load_kerasmodel_but(self):
+        """
+        Open a File dialog when the button is pressed
+        :return:
+        """
+        
+        #Get the file location
+        self.fname, _ = QFileDialog.getOpenFileName(self, 'Open')
+        # Load the image from the location
+        self.load_kerasmodel()
+
+    def load_kerasmodel(self):
+
+        self.thread.model = load_model(self.fname) #loading trained NN
+
 
 
     def load_image_but(self):
