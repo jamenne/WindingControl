@@ -82,6 +82,8 @@ class AcquisitionThread(Thread):
 
             if self.classification == True:
                 img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image to parse through NN
+                # apply normalization
+                img = (img-self.means)/self.stds
                 img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
                 ClassProb = self.model.predict_proba(img, verbose=0) #find prediction probability
                 print(ClassProb)
@@ -299,6 +301,8 @@ class App(QWidget):
     def load_kerasmodel(self):
 
         self.thread.model = load_model(self.fname) #loading trained NN
+        self.means = np.loadtxt('../Means.txt')
+        self.stds = np.loadtxt('../StdDev.txt')
         print('Load selected model')
 
 
