@@ -157,7 +157,7 @@ class App(QWidget):
         self.exposure = self.create_slider("Exposure", 10, 1e6, 130000)
         self.gain = self.create_slider("Gain", 0, 18, 1)
         self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
-        self.framerate = self.create_slider("Framerate", 1, 12, 8)
+        self.framerate = self.create_slider("Framerate", 1, 10, 8)
 
         grid = QGridLayout()
         grid.addWidget(self.exposure, 0,0)
@@ -192,7 +192,7 @@ class App(QWidget):
         slider.setMaximum(maxV)
         slider.setValue(value)
         slider.setTickPosition(QSlider.TicksBelow)
-        slider.setTickInterval( (maxV-minV)/10 )
+        slider.setTickInterval( (maxV-minV+1)/10 )
         slider.setFocusPolicy(Qt.NoFocus)
 
         slider.valueChanged.connect(partial (self.slider_val_changed,  label) )
@@ -234,7 +234,11 @@ class App(QWidget):
             print('Changed ' + label + ' to {}'.format(val))
 
         if label == "Framerate":
-            val = self.framerate.findChild(QSlider).value() 
+            val = self.framerate.findChild(QSlider).value()
+            self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.mvAcquisitionFrameRateEnable=1
+            #print('{:d}'.format(self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.mvAcquisitionFrameRateEnable))
+            self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.AcquisitionFrameRate=val
+            #print('{:.2f}'.format(self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.AcquisitionFrameRate))
             print('Changed ' + label + ' to {}'.format(val))
 
 
