@@ -30,4 +30,7 @@ build
 *.out
 *.app
 
+# ipython notbook
+*.ipynb_checkpoints
+
 .DS_Store
