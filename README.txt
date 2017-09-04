@@ -19,7 +19,6 @@ Install MVacquire python wrapper:
 In Directory run the command:
 * python WindingControl.py
 * 'Run' displays a camera feed with the mvBlueFox3 using PyQt         
-* 'Load' will load a selected images and display it                     
 * 'Save' will save the displayed image to hard drive        
 * 'Quit' determines the application
 * Camera setting handling available
