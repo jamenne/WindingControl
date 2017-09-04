@@ -55,6 +55,9 @@ class AcquisitionThread(Thread):
         self.wants_abort = False
         self.running = False
         self.classification = False
+        self.means = np.loadtxt('../Means.txt')
+        self.stds = np.loadtxt('../StdDev.txt')
+        self.negative = False
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -90,9 +93,10 @@ class AcquisitionThread(Thread):
                 
                 if ClassProb[0,0] < 0.5:
                     print('NEGATIVE')
-                    #print("\a")
+                    self.negative = True
                 else:
                     print('POSITIVE')
+                    self.negative = False
 
             ### End of Classification
             
@@ -151,7 +155,7 @@ class App(QWidget):
 
         # Image viewing region
         self.lbl = QLabel(self)
-        self.lbl.setStyleSheet("border: 5px solid green; background-color: white; inset grey")
+        self.lbl.setStyleSheet("border: 15px solid white; background-color: white; inset grey")
         self.lbl.setFrameShape(QFrame.StyledPanel)
         self.lbl.setFrameShadow(QFrame.Sunken)
 
@@ -276,7 +280,12 @@ class App(QWidget):
                 print('Successfully saved image to file: {:}'.format(path))
                 self.save_im = False
 
-            
+            if self.thread.negative == True:
+                self.lbl.setStyleSheet("border: 15px solid red")
+
+            if self.thread.negative == False:
+                self.lbl.setStyleSheet("border: 15px solid green")
+
             self.lbl.setPixmap(q)
             self.lbl.adjustSize()
             self.show()
@@ -301,8 +310,6 @@ class App(QWidget):
     def load_kerasmodel(self):
 
         self.thread.model = load_model(self.fname) #loading trained NN
-        self.means = np.loadtxt('../Means.txt')
-        self.stds = np.loadtxt('../StdDev.txt')
         print('Load selected model')
 
 
