@@ -22,5 +22,9 @@ In Directory run the command:
 * 'Load' will load a selected images and display it                     
 * 'Save' will save the displayed image to hard drive        
 * 'Quit' determines the application
-* Classification of incoming images coming soon..
-* Camera setting handling coming soon...                                   
+* Camera setting handling available
+* Classification of incoming images working
+* 'Load' will prompt you to select a model for classification and load it
+* 'Start' will start the classification of images
+* 'Stop' will abort the classification of images
+                              
