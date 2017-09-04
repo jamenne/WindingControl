@@ -23,7 +23,7 @@ from threading import Thread
 from six.moves.queue import Queue, Empty, Full
 
 # Qt stuff
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
+from PyQt5.QtWidgets import QApplication, QWidget, QRadioButton, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 
@@ -58,6 +58,9 @@ class AcquisitionThread(Thread):
         self.means = np.loadtxt('../Means.txt')
         self.stds = np.loadtxt('../StdDev.txt')
         self.negative = False
+        self.save_class = False
+        self.written = False
+        self.ClassProb_total = []
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -90,6 +93,9 @@ class AcquisitionThread(Thread):
                 img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
                 ClassProb = self.model.predict_proba(img, verbose=0) #find prediction probability
                 print(ClassProb)
+
+                if self.save_class ==True:
+                    self.ClassProb_total.append(ClassProb[0])
                 
                 if ClassProb[0,0] < 0.5:
                     print('NEGATIVE')
@@ -171,6 +177,11 @@ class App(QWidget):
         grid.addWidget(self.blacklevel, 1,0)
         grid.addWidget(self.framerate, 1,1)
 
+        # RadioButton for saving the Probabilities
+        self.rbutton1 = QRadioButton('Save_Prob')
+        self.rbutton1.setChecked(False)
+        self.rbutton1.toggled.connect(partial( self.save_probabilities, self.rbutton1 ))
+
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
         layout_button.addWidget(self.create_button("Load Model", self.load_kerasmodel_but))
@@ -179,6 +190,7 @@ class App(QWidget):
         layout_button.addWidget(self.create_button("Start", self.run_classification))
         layout_button.addWidget(self.create_button("Stop", self.stop_classification))
         layout_button.addWidget(self.create_button("Quit", self.quit))
+        layout_button.addWidget(self.rbutton1)
         layout_button.addStretch()
 
         # A Vertical layout to include the button layout and then the image
@@ -222,6 +234,21 @@ class App(QWidget):
 
 
     @pyqtSlot()
+    def save_probabilities(self, b):
+        if b.isChecked() == True:
+            self.thread.save_class = True
+            print('Probabilties are being saved in array!')
+        else:
+            if self.thread.save_class == True:
+                self.thread.save_class = False
+                self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
+                np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total, fmt='%.4f')
+                print('File written!')
+                self.thread.written = True
+                self.thread.ClassProb_total = []
+                self.thread.save_class = True
+
+
     def slider_val_changed(self, label):
 
         if label == "Exposure":
@@ -263,11 +290,19 @@ class App(QWidget):
 
     def run_classification(self):
         print('Start Classification')
+
+        self.thread.ClassProb_total = []
         self.thread.classification = True
+
 
     def stop_classification(self):
         print('Stop Classification')
         self.thread.classification = False
+        if self.thread.save_class == True:
+            self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
+            np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total, fmt='%.4f')
+            print('File written!')
+            self.thread.written = True
 
     def open(self):
         try:
