@@ -26,4 +26,4 @@ In Directory run the command:
 * 'Load' will prompt you to select a model for classification and load it
 * 'Start' will start the classification of images
 * 'Stop' will abort the classification of images
-                              
+* 'Save_Prob' will save classification probabilities to an array and after Classification is stopped or 'Save_Prob' is unchecked it will be saved to a file
