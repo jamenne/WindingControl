@@ -166,10 +166,10 @@ class App(QWidget):
         self.lbl.setFrameShadow(QFrame.Sunken)
 
         # Slider for camera settings on a grid layout (4x4)
-        self.exposure = self.create_slider("Exposure", 10, 1e6, 130000)
-        self.gain = self.create_slider("Gain", 0, 18, 1)
-        self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
-        self.framerate = self.create_slider("Framerate", 1, 10, 8)
+        self.exposure = self.create_slider("Exposure", 10, 1e6, 66180)
+        self.gain = self.create_slider("Gain", 0, 18, 7)
+        self.blacklevel = self.create_slider("Blacklevel", -100, 100, -20)
+        self.framerate = self.create_slider("Framerate", 1, 20, 15)
 
         grid = QGridLayout()
         grid.addWidget(self.exposure, 0,0)
@@ -242,7 +242,7 @@ class App(QWidget):
             if self.thread.save_class == True:
                 self.thread.save_class = False
                 self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-                np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total, fmt='%.4f')
+                np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
                 print('File written!')
                 self.thread.written = True
                 self.thread.ClassProb_total = []
@@ -300,7 +300,7 @@ class App(QWidget):
         self.thread.classification = False
         if self.thread.save_class == True:
             self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-            np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total, fmt='%.4f')
+            np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
             print('File written!')
             self.thread.written = True
 
