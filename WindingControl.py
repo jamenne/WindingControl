@@ -23,7 +23,7 @@ from threading import Thread
 from six.moves.queue import Queue, Empty, Full
 
 # Qt stuff
-from PyQt5.QtWidgets import QApplication, QWidget, QRadioButton, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
+from PyQt5.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 
@@ -59,8 +59,14 @@ class AcquisitionThread(Thread):
         self.stds = np.loadtxt('../StdDev.txt')
         self.negative = False
         self.save_class = False
+        self.save_feed = False
         self.written = False
+        self.model = None
         self.ClassProb_total = []
+
+        self.path_dir = '/home/windingcontrol/WindingImages/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
+        if not os.path.exists(self.path_dir):
+            os.makedirs(self.path_dir)
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -105,10 +111,20 @@ class AcquisitionThread(Thread):
                     self.negative = False
 
             ### End of Classification
-            
+
             info=image_result.info
             timestamp = info['timeStamp_us']
             frameNr = info['frameNr']
+
+            ### Saving of Image feed
+
+            if self.save_feed == True:
+                path = self.path_dir + 'IMG_' + str(timestamp) + '.png'
+                img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image
+                scipy.misc.toimage(img).save(path)
+                #print('Successfully saved image to file: {:}'.format(path))
+
+            ### End of saving feed
 
             del image_result
             return dict(img=imgdata, t=timestamp, N=frameNr)
@@ -178,9 +194,14 @@ class App(QWidget):
         grid.addWidget(self.framerate, 1,1)
 
         # RadioButton for saving the Probabilities
-        self.rbutton1 = QRadioButton('Save_Prob')
-        self.rbutton1.setChecked(False)
-        self.rbutton1.toggled.connect(partial( self.save_probabilities, self.rbutton1 ))
+        self.check_but1 = QCheckBox('Save_Prob')
+        self.check_but1.setChecked(False)
+        self.check_but1.stateChanged.connect(partial( self.save_probabilities, self.check_but1 ))
+
+        # RadioButton for saving the video feed
+        self.check_but2 = QCheckBox('Save_Feed')
+        self.check_but2.setChecked(False)
+        self.check_but2.stateChanged.connect(partial( self.save_feed, self.check_but2 ))
 
         # A horizontal layout to include the button on the left
         layout_button = QHBoxLayout()
@@ -190,7 +211,8 @@ class App(QWidget):
         layout_button.addWidget(self.create_button("Start", self.run_classification))
         layout_button.addWidget(self.create_button("Stop", self.stop_classification))
         layout_button.addWidget(self.create_button("Quit", self.quit))
-        layout_button.addWidget(self.rbutton1)
+        layout_button.addWidget(self.check_but1)
+        layout_button.addWidget(self.check_but2)
         layout_button.addStretch()
 
         # A Vertical layout to include the button layout and then the image
@@ -234,6 +256,14 @@ class App(QWidget):
 
 
     @pyqtSlot()
+    def save_feed(self, b):
+        if b.isChecked() == True:
+            self.thread.save_feed = True
+            print('Images are being saved to hard disk!')
+        else:
+            if self.thread.save_feed == True:
+                self.thread.save_feed = False
+
     def save_probabilities(self, b):
         if b.isChecked() == True:
             self.thread.save_class = True
@@ -289,10 +319,12 @@ class App(QWidget):
         timer.start(20) #30 Hz
 
     def run_classification(self):
-        print('Start Classification')
-
-        self.thread.ClassProb_total = []
-        self.thread.classification = True
+        if self.thread.model is not None:
+            print('Start Classification')
+            self.thread.ClassProb_total = []
+            self.thread.classification = True
+        else:
+            print('Load Model first!')
 
 
     def stop_classification(self):
@@ -309,7 +341,7 @@ class App(QWidget):
             img = self.thread.queue.get(block=True, timeout = 1)
             q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
 
-            if self.save_im:
+            if self.save_im ==True:
                 path = '/home/windingcontrol/WindingImages/IMG_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + '.jpg'
                 scipy.misc.toimage(img['img']).save(path)
                 print('Successfully saved image to file: {:}'.format(path))
