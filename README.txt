@@ -27,3 +27,9 @@ In Directory run the command:
 * 'Start' will start the classification of images
 * 'Stop' will abort the classification of images
 * 'Save_Prob' will save classification probabilities to an array and after Classification is stopped or 'Save_Prob' is unchecked it will be saved to a file
+
+
+# for image processing
+* converts images from jpg to 600x800 bmp
+* remove .jpg ending and places .bmp
+* for i in *.jpg; do sips -s format bmp -s formatOptions 70 "${i}" -z 600 800 --out "${i%jpg}bmp"; done
