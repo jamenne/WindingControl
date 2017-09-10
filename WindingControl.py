@@ -97,13 +97,14 @@ class AcquisitionThread(Thread):
                 # apply normalization
                 img = (img-self.means)/self.stds
                 img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
-                ClassProb = self.model.predict_proba(img, verbose=0) #find prediction probability
-                print(ClassProb)
+                Prob = self.model.predict_proba(img, verbose=0) #find prediction probability
+                Prob = np.squeeze(Prob)
+                print('{:}'.format(Prob) )
 
                 if self.save_class ==True:
-                    self.ClassProb_total.append(ClassProb)
+                    self.ClassProb_total.append(Prob)
                 
-                if ClassProb < 0.5:
+                if Prob < 0.5:
                     print('NEGATIVE')
                     self.negative = True
                 else:
