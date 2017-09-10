@@ -101,9 +101,9 @@ class AcquisitionThread(Thread):
                 print(ClassProb)
 
                 if self.save_class ==True:
-                    self.ClassProb_total.append(ClassProb[0])
+                    self.ClassProb_total.append(ClassProb)
                 
-                if ClassProb[0,0] < 0.5:
+                if ClassProb < 0.5:
                     print('NEGATIVE')
                     self.negative = True
                 else:
@@ -182,9 +182,9 @@ class App(QWidget):
         self.lbl.setFrameShadow(QFrame.Sunken)
 
         # Slider for camera settings on a grid layout (4x4)
-        self.exposure = self.create_slider("Exposure", 10, 1e6, 66180)
-        self.gain = self.create_slider("Gain", 0, 18, 7)
-        self.blacklevel = self.create_slider("Blacklevel", -100, 100, -20)
+        self.exposure = self.create_slider("Exposure", 10, 1e6, 58300)
+        self.gain = self.create_slider("Gain", 5, 18, 7)
+        self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
         self.framerate = self.create_slider("Framerate", 1, 20, 15)
 
         grid = QGridLayout()
