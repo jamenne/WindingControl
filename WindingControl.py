@@ -67,6 +67,12 @@ class AcquisitionThread(Thread):
         self.path_dir = '/home/windingcontrol/WindingImages/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
         if not os.path.exists(self.path_dir):
             os.makedirs(self.path_dir)
+            print('Created path: {}'.format(self.path_dir))
+
+        self.path_dir_Data = '/home/windingcontrol/src/WindingControl/Data/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
+        if not os.path.exists(self.path_dir_Data):
+            os.makedirs(self.path_dir_Data)
+            print('Created path: {}'.format(self.path_dir_Data))
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -273,7 +279,7 @@ class App(QWidget):
             if self.thread.save_class == True:
                 self.thread.save_class = False
                 self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-                np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
+                np.savetxt(self.thread.path_dir_Data + "WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
                 print('File written!')
                 self.thread.written = True
                 self.thread.ClassProb_total = []
@@ -333,7 +339,7 @@ class App(QWidget):
         self.thread.classification = False
         if self.thread.save_class == True:
             self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-            np.savetxt("../Data/WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
+            np.savetxt(self.thread.path_dir_Data + "WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
             print('File written!')
             self.thread.written = True
 
