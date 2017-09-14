@@ -24,8 +24,9 @@ from six.moves.queue import Queue, Empty, Full
 
 # Qt stuff
 from PyQt5.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout, QGridLayout, QLabel, QFileDialog, QSlider, QFrame
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import pyqtSlot, Qt, QTimer
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+import pyqtgraph as pg
 
 from keras.models import load_model
 import scipy.misc #library for resizing buffer image
@@ -40,6 +41,8 @@ from PIL import ImageQt
 from datetime import datetime
 
 from functools import partial
+
+import time
 
 
 ##################################################  Image Aquisition ##################################################
@@ -61,8 +64,10 @@ class AcquisitionThread(Thread):
         self.save_class = False
         self.save_feed = False
         self.written = False
-        self.model = None
+        self.model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/2017-09-11/167_165_163_200_selu_100epochs.h5')
         self.ClassProb_total = []
+        self.prob = 0
+        self.plotting = False
 
         self.path_dir = '/home/windingcontrol/WindingImages/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
         if not os.path.exists(self.path_dir):
@@ -104,11 +109,11 @@ class AcquisitionThread(Thread):
                 img = (img-self.means)/self.stds
                 img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
                 Prob = self.model.predict_proba(img, verbose=0) #find prediction probability
-                Prob = np.squeeze(Prob)
-                print('{:}'.format(Prob) )
+                self.prob = np.squeeze(Prob)
+                print('{:}'.format(self.prob) )
 
                 if self.save_class ==True:
-                    self.ClassProb_total.append(Prob)
+                    self.ClassProb_total.append(self.prob)
                 
                 if Prob < 0.5:
                     print('NEGATIVE')
@@ -166,8 +171,8 @@ class AcquisitionThread(Thread):
 ##################################################  QT DISPLAY ##################################################
 class App(QWidget):
  
-    def __init__(self, ac_thread):
-        super().__init__()
+    def __init__(self, ac_thread, parent=None):
+        super(App, self).__init__(parent)
         self.title = 'Winding Control'
         self.left = 10
         self.top = 10
@@ -175,6 +180,7 @@ class App(QWidget):
         self.height = 480
         self.thread = ac_thread
         self.save_im = False
+        self.debugtool = None
 
         self.initGUI()
  
@@ -190,7 +196,7 @@ class App(QWidget):
 
         # Slider for camera settings on a grid layout (4x4)
         self.exposure = self.create_slider("Exposure", 10, 1e6, 58300)
-        self.gain = self.create_slider("Gain", 5, 18, 7)
+        self.gain = self.create_slider("Gain", 5, 18, 5)
         self.blacklevel = self.create_slider("Blacklevel", -100, 100, 0)
         self.framerate = self.create_slider("Framerate", 1, 20, 15)
 
@@ -214,9 +220,10 @@ class App(QWidget):
         layout_button = QHBoxLayout()
         layout_button.addWidget(self.create_button("Load Model", self.load_kerasmodel_but))
         layout_button.addWidget(self.create_button("Save Image", self.save_image))
-        layout_button.addWidget(self.create_button("Run", self.run_aquisition))
+        layout_button.addWidget(self.create_button("Show", self.run_aquisition))
         layout_button.addWidget(self.create_button("Start", self.run_classification))
         layout_button.addWidget(self.create_button("Stop", self.stop_classification))
+        layout_button.addWidget(self.create_button("Debug", self.start_debugtool))
         layout_button.addWidget(self.create_button("Quit", self.quit))
         layout_button.addWidget(self.check_but1)
         layout_button.addWidget(self.check_but2)
@@ -311,6 +318,11 @@ class App(QWidget):
             #print('{:.2f}'.format(self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.AcquisitionFrameRate))
             print('Changed ' + label + ' to {}'.format(val))
 
+    # Button Actions
+    def start_debugtool(self):
+        self.debugtool = DebuggingWindow(self.thread)
+        self.debugtool.show()
+
 
     def run_aquisition(self):
         # Start the thread’s activity.
@@ -337,6 +349,7 @@ class App(QWidget):
     def stop_classification(self):
         print('Stop Classification')
         self.thread.classification = False
+        self.thread.plotting = False
         if self.thread.save_class == True:
             self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
             np.savetxt(self.thread.path_dir_Data + "WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
@@ -423,10 +436,105 @@ class App(QWidget):
         # It is also an error to join() a thread before it has been started and attempts to do so raise the same exception.
         self.thread.join()
 
-
     def quit(self):
         if self.thread.running:
             self.stop_aquisition()
+        self.debugtool.quit()
+        self.close()
+
+##########################   Debugging   ##########################
+
+class DebuggingWindow(QWidget):
+
+    def __init__(self, ac_thread, parent=None):
+        super(DebuggingWindow, self).__init__(parent)
+        self.title = "Debugging Tool"
+        self.thread = ac_thread
+        self.t = QTime()
+        self.timer = QTimer()
+        self.x = np.arange(50)
+        self.y = np.ones(50)
+        self.all_y = []
+
+        ## Switch to using white background and black foreground
+        pg.setConfigOption('background', 'w')
+        pg.setConfigOption('foreground', 'k')
+
+
+        self.initDebug()
+
+    def initDebug(self):
+
+        # A horizontal layout to include the button on the left
+        layout_button = QHBoxLayout()
+        #layout_button.addWidget(self.create_button("Plotting", self.start_live_plotting))
+        layout_button.addWidget(self.create_button("Quit", self.quit))
+        layout_button.addWidget(self.create_button("Plot", self.plot))
+        layout_button.addWidget(self.create_button("Stop", self.stop_plotting))
+        layout_button.addStretch()
+
+        self.plotWidget1 = pg.PlotWidget()
+        self.plotWidget2 = pg.PlotWidget()
+        self.timer.timeout.connect(self._update)
+
+        # A Vertical layout to include the button layout and then the image
+        layout = QVBoxLayout()
+        layout.addLayout(layout_button)
+        layout.addWidget(self.plotWidget1)
+        layout.addWidget(self.plotWidget2)
+
+        self.setLayout(layout)
+
+        self.t.start()
+
+    def create_button(self, label, func):
+
+        button = QPushButton(label)
+        button.clicked.connect(func)
+
+        return button
+
+
+    @pyqtSlot()
+    def stop_plotting(self):
+        self.timer.stop()
+        self.thread.plotting = False
+
+    def plot(self):
+        self.thread.plotting = True
+
+        self.timer.start(200)
+        self.plotWidget1.clear()       
+
+        self.curve1 = self.plotWidget1.plot(self.x, self.y, pen=4, symbol='o') 
+
+        self.plotWidget2.clear()
+        ## compute standard histogram
+        e1, e2 = np.histogram(self.y, bins=np.linspace(-3, 8, 40))
+
+        self.curve2 = self.plotWidget2.plot(e2, e1, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+
+    def _update(self):
+        if self.thread.plotting == True:
+            self.x = np.roll(self.x, -1)
+            self.y = np.roll(self.y, -1)
+            self.x[-1] = self.t.elapsed()
+            self.y[-1] = self.thread.prob
+
+            self.all_y.append(self.thread.prob)
+
+            self.curve1.setData(x=self.x, y=self.y)
+
+            ## compute standard histogram
+            e1, e2 = np.histogram(self.all_y, bins=np.linspace(-1, 1, 10))
+            self.curve2.setData(x=e2, y=e1)
+        else: 
+            self.timer.stop()
+
+        
+
+
+    def quit(self):
         self.close()
 
 
