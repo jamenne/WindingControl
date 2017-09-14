@@ -57,27 +57,11 @@ class AcquisitionThread(Thread):
         self.queue = queue
         self.wants_abort = False
         self.running = False
+        self.liveclassification = LiveClassification()
         self.classification = False
-        self.means = np.loadtxt('../Means.txt')
-        self.stds = np.loadtxt('../StdDev.txt')
-        self.negative = False
-        self.save_class = False
         self.save_feed = False
-        self.written = False
-        self.model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/2017-09-11/167_165_163_200_selu_100epochs.h5')
-        self.ClassProb_total = []
-        self.prob = 0
-        self.plotting = False
+        self.save_img = False
 
-        self.path_dir = '/home/windingcontrol/WindingImages/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
-        if not os.path.exists(self.path_dir):
-            os.makedirs(self.path_dir)
-            print('Created path: {}'.format(self.path_dir))
-
-        self.path_dir_Data = '/home/windingcontrol/src/WindingControl/Data/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
-        if not os.path.exists(self.path_dir_Data):
-            os.makedirs(self.path_dir_Data)
-            print('Created path: {}'.format(self.path_dir_Data))
 
     def acquire_image(self):
         #try to submit 2 new requests -> queue always full
@@ -101,42 +85,23 @@ class AcquisitionThread(Thread):
             buf = image_result.get_buffer()
             imgdata = np.array(buf, copy = False)
 
-            ### Classification of image
-
-            if self.classification == True:
-                img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image to parse through NN
-                # apply normalization
-                img = (img-self.means)/self.stds
-                img = np.reshape(img,[1,75,100,1]) #reshaping data ato parse into keras prediction
-                Prob = self.model.predict_proba(img, verbose=0) #find prediction probability
-                self.prob = np.squeeze(Prob)
-                print('{:}'.format(self.prob) )
-
-                if self.save_class ==True:
-                    self.ClassProb_total.append(self.prob)
-                
-                if Prob < 0.5:
-                    print('NEGATIVE')
-                    self.negative = True
-                else:
-                    print('POSITIVE')
-                    self.negative = False
-
-            ### End of Classification
-
             info=image_result.info
             timestamp = info['timeStamp_us']
             frameNr = info['frameNr']
 
-            ### Saving of Image feed
+            ### Classification of image
+            if self.classification == True:
+                self.liveclassification.classify_image(imgdata)
 
+            ### Saving Image
+            if self.save_img == True:
+                self.liveclassification.save_image(imgdata, timestamp)
+                self.save_img = False
+    
+            ## Saving Feed
             if self.save_feed == True:
-                path = self.path_dir + 'IMG_' + str(timestamp) + '.png'
-                img = scipy.misc.imresize(imgdata, (75, 100)) #resizing image
-                scipy.misc.toimage(img).save(path)
-                #print('Successfully saved image to file: {:}'.format(path))
-
-            ### End of saving feed
+                img = scipy.misc.imresize(imgdata, (75, 100))
+                self.liveclassification.save_image(img, timestamp)
 
             del image_result
             return dict(img=imgdata, t=timestamp, N=frameNr)
@@ -186,6 +151,71 @@ class AcquisitionThread(Thread):
         if self.GPOstatus == 0:
             self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=0
 
+############################################  CLASSIFICATION / CAMERA  ##########################################
+class LiveClassification:
+    def __init__(self):
+        super(LiveClassification, self).__init__()
+
+        self.model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/2017-09-11/167_165_163_200_selu_100epochs.h5')
+        self.prob_total = []
+        self.save_prob = False
+        self.negative = False
+        self.means = np.loadtxt('../Means.txt')
+        self.stds = np.loadtxt('../StdDev.txt')
+
+        self.path_dir = '/home/windingcontrol/WindingImages/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
+        if not os.path.exists(self.path_dir):
+            os.makedirs(self.path_dir)
+            print('Created path: {}'.format(self.path_dir))
+
+        self.path_dir_Data = '/home/windingcontrol/src/WindingControl/Data/' + str(datetime.now().strftime('%Y-%m-%d') + '/')
+        if not os.path.exists(self.path_dir_Data):
+            os.makedirs(self.path_dir_Data)
+            print('Created path: {}'.format(self.path_dir_Data))
+
+
+
+    def classify_image(self,imgdata):
+
+        #resizing image to parse through NN
+        img = scipy.misc.imresize(imgdata, (75, 100)) 
+        # apply normalization
+        img = (img-self.means)/self.stds
+        #reshaping data ato parse into keras prediction
+        img = np.reshape(img,[1,75,100,1]) 
+        #find prediction probability
+        Prob = self.model.predict_proba(img, verbose=0) 
+        self.prob = np.squeeze(Prob)
+        print('{:}'.format(self.prob) )
+
+        if self.save_prob == True:
+            self.prob_total.append(self.prob)
+        
+        if Prob < 0.5:
+            print('NEGATIVE')
+            self.negative = True
+        else:
+            print('POSITIVE')
+            self.negative = False
+
+    def save_probs_to_file(self):
+        
+        self.prob_total = np.array(self.prob_total)
+        np.savetxt('{}WindingProb_{}.txt'.format(self.path_dir_Data, str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))), self.prob_total)
+        print('File written!')
+        self.written = True
+        self.prob_total = []
+
+    def save_image(self, imgdata, timestamp):
+
+        scipy.misc.toimage(imgdata).save( '{}IMG_{}.jpg'.format(self.path_dir, timestamp) )
+        #print('Successfully saved image to file: {:}'.format(self.path_dir) )
+
+
+    def load_kerasmodel(self, fname):
+
+        self.model = load_model(fname) #loading trained NN
+        print('Load selected model')
 
 ##################################################  QT DISPLAY ##################################################
 class App(QWidget):
@@ -240,7 +270,7 @@ class App(QWidget):
         layout_button.addWidget(self.create_button("Load Model", self.load_kerasmodel_but))
         layout_button.addWidget(self.create_button("Save Image", self.save_image))
         layout_button.addWidget(self.create_button("Show", self.run_aquisition))
-        layout_button.addWidget(self.create_button("Start", self.run_classification))
+        layout_button.addWidget(self.create_button("Start", self.start_classification))
         layout_button.addWidget(self.create_button("Stop", self.stop_classification))
         layout_button.addWidget(self.create_button("Debug", self.start_debugtool))
         layout_button.addWidget(self.create_button("Quit", self.quit))
@@ -286,29 +316,42 @@ class App(QWidget):
 
         return button
 
-
     @pyqtSlot()
+    def load_kerasmodel_but(self):
+        """
+        Open a File dialog when the button is pressed
+        :return:
+        """
+        
+        #Get the file location
+        self.fname, _ = QFileDialog.getOpenFileName(self, 'Open')
+        # Load the image from the location
+        self.thread.liveclassification.load_kerasmodel(self.fname)
+
+    def start_debugtool(self):
+        self.debugtool = DebuggingWindow(self.thread)
+        self.debugtool.show()
+
+    def save_probabilities(self, b):
+        if b.isChecked() == True:
+            self.thread.liveclassification.save_prob = True
+            print('Probabilities are being saved in array!')
+
+        else:
+            if self.thread.liveclassification.save_prob == True:
+                self.thread.liveclassification.save_prob = False
+
+                # save collected probs in File
+                self.thread.liveclassification.save_probs_to_file()
+
     def save_feed(self, b):
         if b.isChecked() == True:
             self.thread.save_feed = True
             print('Images are being saved to hard disk!')
+
         else:
             if self.thread.save_feed == True:
                 self.thread.save_feed = False
-
-    def save_probabilities(self, b):
-        if b.isChecked() == True:
-            self.thread.save_class = True
-            print('Probabilties are being saved in array!')
-        else:
-            if self.thread.save_class == True:
-                self.thread.save_class = False
-                self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-                np.savetxt(self.thread.path_dir_Data + "WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
-                print('File written!')
-                self.thread.written = True
-                self.thread.ClassProb_total = []
-                self.thread.save_class = True
 
 
     def slider_val_changed(self, label):
@@ -336,12 +379,6 @@ class App(QWidget):
             #print('{:.2f}'.format(self.thread.dev.Setting.Base.Camera.GenICam.AcquisitionControl.AcquisitionFrameRate))
             print('Changed ' + label + ' to {}'.format(val))
 
-    # Button Actions
-    def start_debugtool(self):
-        self.debugtool = DebuggingWindow(self.thread)
-        self.debugtool.show()
-
-
     def run_aquisition(self):
         # Start the thread’s activity.
         # It must be called at most once per thread object. 
@@ -354,89 +391,6 @@ class App(QWidget):
         timer = QTimer(self)
         timer.timeout.connect(self.open)
         timer.start(20) #30 Hz
-
-    def run_classification(self):
-        if self.thread.model is not None:
-            print('Start Classification')
-            self.thread.ClassProb_total = []
-            self.thread.classification = True
-        else:
-            print('Load Model first!')
-
-
-    def stop_classification(self):
-        print('Stop Classification')
-        self.thread.classification = False
-        self.thread.plotting = False
-        if self.thread.save_class == True:
-            self.thread.ClassProb_total = np.array(self.thread.ClassProb_total)
-            np.savetxt(self.thread.path_dir_Data + "WindingProb_" + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + ".txt", self.thread.ClassProb_total)
-            print('File written!')
-            self.thread.written = True
-
-    def open(self):
-        try:
-            img = self.thread.queue.get(block=True, timeout = 1)
-            q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
-
-            if self.save_im ==True:
-                path = '/home/windingcontrol/WindingImages/IMG_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')) + '.jpg'
-                scipy.misc.toimage(img['img']).save(path)
-                print('Successfully saved image to file: {:}'.format(path))
-                self.save_im = False
-
-            if self.thread.negative == True:
-                self.lbl.setStyleSheet("border: 15px solid red")
-
-            if self.thread.negative == False:
-                self.lbl.setStyleSheet("border: 15px solid green")
-
-            self.lbl.setPixmap(q)
-            self.lbl.adjustSize()
-            self.show()
-
-        except Empty:
-            print("got no image")
-
-    def save_image(self):
-        self.save_im = True
-
-    def load_kerasmodel_but(self):
-        """
-        Open a File dialog when the button is pressed
-        :return:
-        """
-        
-        #Get the file location
-        self.fname, _ = QFileDialog.getOpenFileName(self, 'Open')
-        # Load the image from the location
-        self.load_kerasmodel()
-
-    def load_kerasmodel(self):
-
-        self.thread.model = load_model(self.fname) #loading trained NN
-        print('Load selected model')
-
-
-    def load_image_but(self):
-        """
-        Open a File dialog when the button is pressed
-        :return:
-        """
-        
-        #Get the file location
-        self.fname, _ = QFileDialog.getOpenFileName(self, 'Open')
-        # Load the image from the location
-        self.load_image()
-
-    def load_image(self):
-        """
-        Set the image to the pixmap
-        :return:
-        """
-        pixmap = QPixmap(self.fname)
-        pixmap = pixmap.scaled(500, 500, Qt.KeepAspectRatio)
-        self.lbl.setPixmap(pixmap)
 
     def stop_aquisition(self):
         #wait until acquisition thread has stopped
@@ -454,11 +408,54 @@ class App(QWidget):
         # It is also an error to join() a thread before it has been started and attempts to do so raise the same exception.
         self.thread.join()
 
+    def start_classification(self):
+        if self.thread.liveclassification is None:
+            self.thread.liveclassification = LiveClassification()
+        
+        if self.thread.liveclassification.model is not None:
+            print('Start Classification')
+            self.thread.liveclassification.prob_total = []
+            self.thread.classification = True
+        else:
+            print('Load Model first!')
+
+
+    def stop_classification(self):
+        print('Stop Classification')
+        self.thread.classification = False
+        self.thread.plotting = False
+        if self.thread.liveclassification.save_prob == True:
+            # save collected probs in File
+            self.thread.liveclassification.save_probs_to_file()
+
+    def open(self):
+        try:
+            img = self.thread.queue.get(block=True, timeout = 1)
+            q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
+
+            if self.thread.liveclassification.negative == True:
+                self.lbl.setStyleSheet("border: 15px solid red")
+
+            if self.thread.liveclassification.negative == False:
+                self.lbl.setStyleSheet("border: 15px solid green")
+
+            self.lbl.setPixmap(q)
+            self.lbl.adjustSize()
+            self.show()
+
+        except Empty:
+            print("got no image")
+
+    def save_image(self):
+        self.thread.save_img = True
+
     def quit(self):
-        if self.thread.running:
+        if self.thread.running == True:
             self.stop_aquisition()
-        self.debugtool.quit()
+        if self.debugtool is not None:
+            self.debugtool.quit()
         self.close()
+
 
 ##########################   Debugging   ##########################
 
@@ -516,10 +513,8 @@ class DebuggingWindow(QWidget):
     @pyqtSlot()
     def stop_plotting(self):
         self.timer.stop()
-        self.thread.plotting = False
 
     def plot(self):
-        self.thread.plotting = True
 
         self.timer.start(200)
         self.plotWidget1.clear()       
@@ -533,25 +528,22 @@ class DebuggingWindow(QWidget):
         self.curve2 = self.plotWidget2.plot(e2, e1, stepMode=True, fillLevel=0, brush=(0,0,255,150))
 
     def _update(self):
-        if self.thread.plotting == True:
+        if self.thread.classification == True:
             self.x = np.roll(self.x, -1)
             self.y = np.roll(self.y, -1)
             self.x[-1] = self.t.elapsed()
-            self.y[-1] = self.thread.prob
+            self.y[-1] = self.thread.liveclassification.prob
 
-            self.all_y.append(self.thread.prob)
+            self.all_y.append(self.thread.liveclassification.prob)
 
             self.curve1.setData(x=self.x, y=self.y)
 
             ## compute standard histogram
             e1, e2 = np.histogram(self.all_y, bins=np.linspace(-1, 1, 10))
             self.curve2.setData(x=e2, y=e1)
-        else: 
-            self.timer.stop()
+
 
         
-
-
     def quit(self):
         self.close()
 
