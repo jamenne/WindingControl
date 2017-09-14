@@ -168,6 +168,25 @@ class AcquisitionThread(Thread):
         self.wants_abort = True
 
 
+    def switch_output(self):
+    # ------------------------------------------
+    #   This device has 6 DigitalIOs
+    # ------------------------------------------
+    # IO 0:   Type: Output    Current state: OFF
+    # IO 1:   Type: Output    Current state: OFF
+    # IO 2:   Type: Output    Current state: OFF
+    # IO 3:   Type: Output    Current state: OFF
+    # IO 4:   Type: Input     Current state: OFF
+    # IO 5:   Type: Input     Current state: OFF
+    # ------------------------------------------
+    # status = 1: switching GPO ON
+    # status = 0: switching GPO OFF
+        if self.GPO_status == 1:
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=1
+        if self.GPOstatus == 0:
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=0
+
+
 ##################################################  QT DISPLAY ##################################################
 class App(QWidget):
  
@@ -266,7 +285,6 @@ class App(QWidget):
         button.clicked.connect(func)
 
         return button
-
 
 
     @pyqtSlot()
@@ -541,6 +559,7 @@ class DebuggingWindow(QWidget):
 ########################## MAIN FUNCTION ##########################
 
 def main():
+    #device.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=1 to set output ON
 
     #find and open device
     serials = mv.List(0).Devices.children
