@@ -99,11 +99,11 @@ class AcquisitionThread(Thread):
                     self.neg_counter += 1
                     print('Count up: {:d}'.format(self.neg_counter))
 
-                elif neg == False:
+                if neg == False:
                     self.neg_counter = 0
-                    print('reset counter')
+                    #print('reset counter')
 
-                if self.neg_counter >= 5:
+                if self.neg_counter >= 10:
                     # trigger stopping signal to machine
                     self.switch_output()
                     self.classification=False
@@ -217,7 +217,8 @@ class LiveClassification:
         #find prediction probability
         Prob = self.model.predict_proba(img, verbose=0) 
         self.prob = np.squeeze(Prob)
-        print('{:}'.format(self.prob) )
+ 
+        print('{:}'.format(self.prob))
 
         if self.save_prob == True:
             self.prob_total.append(self.prob)
@@ -576,7 +577,7 @@ class DebuggingWindow(QWidget):
             self.curve1.setData(x=self.x, y=self.y)
 
             ## compute standard histogram
-            e1, e2 = np.histogram(self.all_y, bins=np.linspace(-1, 1, 10))
+            e1, e2 = np.histogram(self.all_y, bins=np.linspace(-1, 1, 50))
             self.curve2.setData(x=e2, y=e1)
 
 
