@@ -62,6 +62,7 @@ class AcquisitionThread(Thread):
         self.save_feed = False
         self.save_img = False
         self.neg_counter = 0
+        self.GPO_ON = False 
 
 
     def acquire_image(self):
@@ -93,9 +94,10 @@ class AcquisitionThread(Thread):
             ### Classification of image
             if self.classification == True:
                 neg = self.liveclassification.classify_image(imgdata)
+
                 if neg == True:
                     self.neg_counter += 1
-                    print('Count up')
+                    print('Count up: {:d}'.format(self.neg_counter))
 
                 elif neg == False:
                     self.neg_counter = 0
@@ -104,8 +106,13 @@ class AcquisitionThread(Thread):
                 if self.neg_counter >= 5:
                     # trigger stopping signal to machine
                     self.switch_output()
-
+                    self.classification=False
                     self.neg_counter = 0
+
+                    time.sleep(5)
+
+                    self.switch_output()
+
 
 
             ### Saving Image
@@ -161,10 +168,19 @@ class AcquisitionThread(Thread):
     # ------------------------------------------
     # status = 1: switching GPO ON
     # status = 0: switching GPO OFF
-        if self.GPO_status == 1:
-            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=1
-        if self.GPOstatus == 0:
+        if self.GPO_ON == True:
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineStatusAll
             self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=0
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineStatusAll
+            print('Switched Output OFF')
+            self.GPO_ON=False
+
+        elif self.GPO_ON == False:
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineStatusAll
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineInverter=1
+            self.dev.Setting.Base.Camera.GenICam.DigitalIOControl.LineStatusAll
+            print('Switched Output ON')
+            self.GPO_ON = True
 
 ############################################  CLASSIFICATION / CAMERA  ##########################################
 class LiveClassification:
@@ -446,9 +462,11 @@ class App(QWidget):
 
     def open(self):
         try:
+            # get image
             img = self.thread.queue.get(block=True, timeout = 1)
+            # convert image to pixmap to show it int GUI
             q = QPixmap.fromImage(ImageQt.ImageQt(scipy.misc.toimage(img['img'])))
-
+            q = q.scaled(1200, 900)
             if self.thread.liveclassification.negative == True:
                 self.lbl.setStyleSheet("border: 15px solid red")
 
@@ -466,6 +484,9 @@ class App(QWidget):
         self.thread.save_img = True
 
     def quit(self):
+        if self.thread.GPO_ON == True:
+            self.thread.switch_output()
+
         if self.thread.running == True:
             self.stop_aquisition()
         if self.debugtool is not None:
