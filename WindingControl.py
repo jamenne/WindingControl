@@ -103,7 +103,7 @@ class AcquisitionThread(Thread):
                     self.neg_counter = 0
                     #print('reset counter')
 
-                if self.neg_counter >= 10:
+                if self.neg_counter >= 1000000:
                     # trigger stopping signal to machine
                     self.switch_output()
                     self.classification=False
@@ -187,7 +187,7 @@ class LiveClassification:
     def __init__(self):
         super(LiveClassification, self).__init__()
 
-        self.model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/2017-09-11/167_165_163_200_selu_100epochs.h5')
+        self.model = load_model('/home/windingcontrol/src/WindingControl/TrainedModels/2017-09-15/165_163_163_200.h5')
         self.prob_total = []
         self.save_prob = False
         self.negative = False
@@ -556,14 +556,18 @@ class DebuggingWindow(QWidget):
 
         self.timer.start(200)
         self.plotWidget1.clear()       
+        self.plotWidget1.setYRange(-0.2, 1.2, padding=0)
 
         self.curve1 = self.plotWidget1.plot(self.x, self.y, pen=4, symbol='o') 
 
         self.plotWidget2.clear()
+        self.plotWidget2.setXRange(-0.2, 1.2, padding=0)
+
         ## compute standard histogram
         e1, e2 = np.histogram(self.y, bins=np.linspace(-3, 8, 40))
 
         self.curve2 = self.plotWidget2.plot(e2, e1, stepMode=True, fillLevel=0, brush=(0,0,255,150))
+
 
     def _update(self):
         if self.thread.classification == True:
@@ -577,7 +581,7 @@ class DebuggingWindow(QWidget):
             self.curve1.setData(x=self.x, y=self.y)
 
             ## compute standard histogram
-            e1, e2 = np.histogram(self.all_y, bins=np.linspace(-1, 1, 50))
+            e1, e2 = np.histogram(self.all_y, bins=np.linspace(0, 1, 40))
             self.curve2.setData(x=e2, y=e1)
 
 
