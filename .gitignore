@@ -1,6 +1,6 @@
 # Build folder
 build
-.ipynb_checkpoints/
+.ipynb_checkpoints
 
 # Compiled Object files
 *.slo
