@@ -1,8 +1,8 @@
 # Winding Control
 
 Repository contains files for the training and implementation of a Convolutional
-Neural Network (CNN) for the quality control of the Scintilating Fibre Mat 
-winding process
+Neural Network (CNN) for the quality control of the Scintillating Fibre Mat 
+winding process. A setup containing a industry camera monitors the winding process and feed the pictures into a trained CNN for classification. If the winding pattern contains an error, the output of the camera sends a signal to the winding machine and stopps the process for correction. A GUI was developed to display the camera feed and the output of the classifier.
 
 ## HOW TO RUN
 Install required python packages:  
